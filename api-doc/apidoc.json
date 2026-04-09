@@ -1,0 +1,14 @@
+{
+  "name": "Starter Backend API",
+  "version": "1.0.0",
+  "description": "API documentation for the starter backend template",
+  "title": "Starter Backend API Docs",
+  "url": "http://localhost",
+  "order": [
+    "Health"
+  ],
+  "exclude": [
+    "vendor",
+    "node_modules"
+  ]
+}
