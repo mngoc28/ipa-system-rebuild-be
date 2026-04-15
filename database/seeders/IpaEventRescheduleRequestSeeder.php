@@ -12,17 +12,24 @@ final class IpaEventRescheduleRequestSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_event_reschedule_request')->exists()) {
+        $eventId = DB::table('ipa_event')->value('id');
+        $userId = DB::table('ipa_user')->value('id');
+
+        if ($eventId === null || $userId === null) {
+            return;
+        }
+
+        if (DB::table('ipa_event_reschedule_request')->where('event_id', $eventId)->exists()) {
             return;
         }
 
         DB::table('ipa_event_reschedule_request')->insert([
-                'event_id' => DB::table('ipa_event')->value('id'),
-                'requested_by' => DB::table('ipa_user')->value('id'),
-                'proposed_start_at' => now(),
-                'proposed_end_at' => now(),
-                'reason' => 'reason seed text',
-                'status' => 1,
+            'event_id' => $eventId,
+            'requested_by' => $userId,
+            'proposed_start_at' => now()->addDay()->setTime(14, 0),
+            'proposed_end_at' => now()->addDay()->setTime(15, 30),
+            'reason' => 'Đề xuất dời lịch do thay đổi lịch công tác',
+            'status' => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

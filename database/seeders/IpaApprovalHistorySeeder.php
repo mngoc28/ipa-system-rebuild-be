@@ -12,18 +12,24 @@ final class IpaApprovalHistorySeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_approval_history')->exists()) {
-            return;
-        }
+        $changedBy = (int) (DB::table('ipa_user')->min('id') ?? 1);
 
-        DB::table('ipa_approval_history')->insert([
-                'approval_request_id' => DB::table('ipa_approval_request')->value('id'),
-                'old_status' => 1,
-                'new_status' => 1,
-                'changed_by' => DB::table('ipa_user')->value('id'),
+        foreach (DB::table('ipa_approval_request')->orderBy('id')->get() as $request) {
+            $exists = DB::table('ipa_approval_history')->where('approval_request_id', $request->id)->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            DB::table('ipa_approval_history')->insert([
+                'approval_request_id' => $request->id,
+                'old_status' => 0,
+                'new_status' => (int) $request->status,
+                'changed_by' => $changedBy,
                 'changed_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

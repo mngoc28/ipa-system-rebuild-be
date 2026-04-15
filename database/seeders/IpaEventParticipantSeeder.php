@@ -12,17 +12,33 @@ final class IpaEventParticipantSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_event_participant')->exists()) {
+        $eventIds = DB::table('ipa_event')->orderBy('id')->pluck('id');
+        $userIds = DB::table('ipa_user')->orderBy('id')->pluck('id');
+
+        if ($eventIds->isEmpty() || $userIds->isEmpty()) {
             return;
         }
 
-        DB::table('ipa_event_participant')->insert([
-                'event_id' => DB::table('ipa_event')->value('id'),
-                'user_id' => DB::table('ipa_user')->value('id'),
-                'participation_status' => 1,
-                'invited_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        foreach ($eventIds as $index => $eventId) {
+            foreach ($userIds as $userId) {
+                $exists = DB::table('ipa_event_participant')
+                    ->where('event_id', $eventId)
+                    ->where('user_id', $userId)
+                    ->exists();
+
+                if ($exists) {
+                    continue;
+                }
+
+                DB::table('ipa_event_participant')->insert([
+                    'event_id' => $eventId,
+                    'user_id' => $userId,
+                    'participation_status' => $index === 0 ? 1 : 0,
+                    'invited_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
     }
 }

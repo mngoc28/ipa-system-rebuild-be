@@ -6,23 +6,38 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaNotificationRecipientSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_notification_recipient')->exists()) {
+        $notificationIds = DB::table('ipa_notification')->orderBy('id')->pluck('id');
+        $userIds = DB::table('ipa_user')->orderBy('id')->pluck('id');
+
+        if ($notificationIds->isEmpty() || $userIds->isEmpty()) {
             return;
         }
 
-        DB::table('ipa_notification_recipient')->insert([
-                'notification_id' => DB::table('ipa_notification')->value('id'),
-                'recipient_user_id' => DB::table('ipa_user')->value('id'),
-                'delivery_status' => 1,
-                'read_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        foreach ($notificationIds as $index => $notificationId) {
+            foreach ($userIds as $userId) {
+                $exists = DB::table('ipa_notification_recipient')
+                    ->where('notification_id', $notificationId)
+                    ->where('recipient_user_id', $userId)
+                    ->exists();
+
+                if ($exists) {
+                    continue;
+                }
+
+                DB::table('ipa_notification_recipient')->insert([
+                    'notification_id' => $notificationId,
+                    'recipient_user_id' => $userId,
+                    'delivery_status' => 1,
+                    'read_at' => $index === 0 ? now() : null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
     }
 }

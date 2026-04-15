@@ -1,0 +1,426 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Repositories\EventRepository;
+
+use App\Models\Event;
+use App\Repositories\BaseRepository;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+
+final class EventRepository extends BaseRepository implements EventRepositoryInterface
+{
+    private const EVENT_TYPE_MAP = [
+        1 => 'MEETING',
+        2 => 'VISIT',
+        3 => 'WORKSHOP',
+        4 => 'CEREMONY',
+    ];
+
+    private const STATUS_MAP = [
+        0 => 'PLANNED',
+        1 => 'CONFIRMED',
+        2 => 'DONE',
+        3 => 'CANCELLED',
+    ];
+
+    public function getModel(): string
+    {
+        return Event::class;
+    }
+
+    public function getPaginated(Request $request): array
+    {
+        $page = max(1, (int) $request->input('page', 1));
+        $pageSize = max(1, min(100, (int) $request->input('pageSize', 20)));
+        $delegationId = trim((string) $request->input('delegationId', ''));
+        $organizerId = trim((string) $request->input('organizerId', ''));
+        $from = trim((string) $request->input('from', ''));
+        $to = trim((string) $request->input('to', ''));
+
+        $query = DB::table('ipa_event as event')
+            ->select([
+                'event.id',
+                'event.delegation_id',
+                'event.title',
+                'event.description',
+                'event.event_type',
+                'event.status',
+                'event.start_at',
+                'event.end_at',
+                'event.location_id',
+                'event.organizer_user_id',
+                'event.created_at',
+                'event.updated_at',
+            ]);
+
+        if ($delegationId !== '') {
+            $query->where('event.delegation_id', is_numeric($delegationId) ? (int) $delegationId : $delegationId);
+        }
+
+        if ($organizerId !== '' && is_numeric($organizerId)) {
+            $query->where('event.organizer_user_id', (int) $organizerId);
+        }
+
+        if ($from !== '') {
+            $query->whereDate('event.start_at', '>=', $from);
+        }
+
+        if ($to !== '') {
+            $query->whereDate('event.end_at', '<=', $to);
+        }
+
+        $total = (clone $query)->count();
+
+        $rows = $query
+            ->orderBy('event.start_at')
+            ->offset(($page - 1) * $pageSize)
+            ->limit($pageSize)
+            ->get();
+
+        $eventIds = $rows->pluck('id')->map(static fn ($id): int => (int) $id)->all();
+        $participantsByEvent = $this->loadParticipants($eventIds);
+
+        return [
+            'items' => $rows->map(function (object $row) use ($participantsByEvent): array {
+                $eventId = (int) $row->id;
+                $participants = $participantsByEvent[$eventId] ?? [];
+
+                return [
+                    'id' => (string) $row->id,
+                    'delegationId' => $row->delegation_id !== null ? (string) $row->delegation_id : null,
+                    'title' => (string) $row->title,
+                    'eventType' => self::EVENT_TYPE_MAP[(int) $row->event_type] ?? 'MEETING',
+                    'status' => self::STATUS_MAP[(int) $row->status] ?? 'PLANNED',
+                    'startAt' => $this->formatDate($row->start_at),
+                    'endAt' => $this->formatDate($row->end_at),
+                    'locationId' => $row->location_id !== null ? (string) $row->location_id : null,
+                    'organizerUserId' => (string) $row->organizer_user_id,
+                    'participantUserIds' => array_map(static fn (int $userId): string => (string) $userId, array_keys($participants)),
+                    'joinStates' => array_reduce(array_keys($participants), function (array $carry, int $userId) use ($participants): array {
+                        $carry[(string) $userId] = $participants[$userId] === 1 ? 'JOINED' : 'DECLINED';
+
+                        return $carry;
+                    }, []),
+                ];
+            })->all(),
+            'meta' => [
+                'page' => $page,
+                'pageSize' => $pageSize,
+                'total' => $total,
+                'totalPages' => (int) ceil($total / $pageSize),
+            ],
+        ];
+    }
+
+    public function findById(string $id): ?array
+    {
+        $row = DB::table('ipa_event as event')
+            ->where('event.id', $id)
+            ->first();
+
+        if (! $row) {
+            return null;
+        }
+
+        $participantsByEvent = $this->loadParticipants([(int) $row->id]);
+        $externalParticipants = DB::table('ipa_event_external_participant')
+            ->where('event_id', (int) $row->id)
+            ->orderBy('id')
+            ->get()
+            ->map(static function (object $participant): array {
+                return [
+                    'id' => (string) $participant->id,
+                    'fullName' => (string) $participant->full_name,
+                    'organizationName' => $participant->organization_name !== null ? (string) $participant->organization_name : null,
+                    'email' => $participant->email !== null ? (string) $participant->email : null,
+                    'phone' => $participant->phone !== null ? (string) $participant->phone : null,
+                ];
+            })
+            ->all();
+
+        $reschedules = DB::table('ipa_event_reschedule_request')
+            ->where('event_id', (int) $row->id)
+            ->orderByDesc('id')
+            ->get()
+            ->map(static function (object $request): array {
+                return [
+                    'id' => (string) $request->id,
+                    'requestedBy' => (string) $request->requested_by,
+                    'proposedStartAt' => Carbon::parse((string) $request->proposed_start_at)->toIso8601String(),
+                    'proposedEndAt' => Carbon::parse((string) $request->proposed_end_at)->toIso8601String(),
+                    'reason' => $request->reason !== null ? (string) $request->reason : null,
+                    'status' => (int) $request->status,
+                ];
+            })
+            ->all();
+
+        return [
+            'event' => [
+                'id' => (string) $row->id,
+                'delegationId' => $row->delegation_id !== null ? (string) $row->delegation_id : null,
+                'title' => (string) $row->title,
+                'description' => $row->description !== null ? (string) $row->description : null,
+                'eventType' => self::EVENT_TYPE_MAP[(int) $row->event_type] ?? 'MEETING',
+                'status' => self::STATUS_MAP[(int) $row->status] ?? 'PLANNED',
+                'startAt' => $this->formatDate($row->start_at),
+                'endAt' => $this->formatDate($row->end_at),
+                'locationId' => $row->location_id !== null ? (string) $row->location_id : null,
+                'organizerUserId' => (string) $row->organizer_user_id,
+                'createdAt' => $this->formatDate($row->created_at),
+                'updatedAt' => $this->formatDate($row->updated_at),
+            ],
+            'participants' => $participantsByEvent[(int) $row->id] ?? [],
+            'externalParticipants' => $externalParticipants,
+            'rescheduleRequests' => $reschedules,
+        ];
+    }
+
+    public function createEvent(array $attributes, ?int $requestedBy = null): ?array
+    {
+        return DB::transaction(function () use ($attributes, $requestedBy): ?array {
+            $eventId = (int) DB::table('ipa_event')->insertGetId([
+                'delegation_id' => $this->nullableInteger(Arr::get($attributes, 'delegationId', Arr::get($attributes, 'delegation_id'))),
+                'title' => (string) Arr::get($attributes, 'title'),
+                'description' => Arr::get($attributes, 'description'),
+                'event_type' => $this->resolveEventType(Arr::get($attributes, 'eventType', Arr::get($attributes, 'event_type', 'MEETING'))),
+                'status' => $this->resolveStatus(Arr::get($attributes, 'status', 'PLANNED')),
+                'start_at' => Arr::get($attributes, 'startAt', Arr::get($attributes, 'start_at')),
+                'end_at' => Arr::get($attributes, 'endAt', Arr::get($attributes, 'end_at')),
+                'location_id' => $this->nullableInteger(Arr::get($attributes, 'locationId', Arr::get($attributes, 'location_id'))),
+                'organizer_user_id' => $this->requiredInteger(Arr::get($attributes, 'organizerUserId', Arr::get($attributes, 'organizer_user_id')), $requestedBy),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $participantIds = Arr::get($attributes, 'participantUserIds', Arr::get($attributes, 'participant_user_ids', []));
+            if (is_array($participantIds) && $participantIds !== []) {
+                $now = now();
+                $rows = [];
+
+                foreach ($participantIds as $participantId) {
+                    if (! is_numeric($participantId)) {
+                        continue;
+                    }
+
+                    $rows[] = [
+                        'event_id' => $eventId,
+                        'user_id' => (int) $participantId,
+                        'participation_status' => 1,
+                        'invited_at' => $now,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+
+                if ($rows !== []) {
+                    DB::table('ipa_event_participant')->insert($rows);
+                }
+            }
+
+            $created = $this->findById((string) $eventId);
+
+            return $created['event'] ?? null;
+        });
+    }
+
+    public function updateEvent(string $id, array $attributes): ?array
+    {
+        return DB::transaction(function () use ($id, $attributes): ?array {
+            $event = DB::table('ipa_event')->where('id', $id)->first();
+
+            if (! $event) {
+                return null;
+            }
+
+            $payload = [];
+
+            if (Arr::has($attributes, 'delegationId') || Arr::has($attributes, 'delegation_id')) {
+                $payload['delegation_id'] = $this->nullableInteger(Arr::get($attributes, 'delegationId', Arr::get($attributes, 'delegation_id')));
+            }
+
+            if (Arr::has($attributes, 'title')) {
+                $payload['title'] = (string) Arr::get($attributes, 'title');
+            }
+
+            if (Arr::has($attributes, 'description')) {
+                $payload['description'] = Arr::get($attributes, 'description');
+            }
+
+            if (Arr::has($attributes, 'eventType') || Arr::has($attributes, 'event_type')) {
+                $payload['event_type'] = $this->resolveEventType(Arr::get($attributes, 'eventType', Arr::get($attributes, 'event_type')));
+            }
+
+            if (Arr::has($attributes, 'status')) {
+                $payload['status'] = $this->resolveStatus(Arr::get($attributes, 'status'));
+            }
+
+            if (Arr::has($attributes, 'startAt') || Arr::has($attributes, 'start_at')) {
+                $payload['start_at'] = Arr::get($attributes, 'startAt', Arr::get($attributes, 'start_at'));
+            }
+
+            if (Arr::has($attributes, 'endAt') || Arr::has($attributes, 'end_at')) {
+                $payload['end_at'] = Arr::get($attributes, 'endAt', Arr::get($attributes, 'end_at'));
+            }
+
+            if (Arr::has($attributes, 'locationId') || Arr::has($attributes, 'location_id')) {
+                $payload['location_id'] = $this->nullableInteger(Arr::get($attributes, 'locationId', Arr::get($attributes, 'location_id')));
+            }
+
+            $payload['updated_at'] = now();
+
+            DB::table('ipa_event')->where('id', $id)->update($payload);
+
+            $updated = $this->findById($id);
+
+            return $updated['event'] ?? null;
+        });
+    }
+
+    public function deleteEvent(string $id): bool
+    {
+        return DB::transaction(function () use ($id): bool {
+            DB::table('ipa_event_participant')->where('event_id', $id)->delete();
+            DB::table('ipa_event_external_participant')->where('event_id', $id)->delete();
+            DB::table('ipa_event_reschedule_request')->where('event_id', $id)->delete();
+
+            return (bool) DB::table('ipa_event')->where('id', $id)->delete();
+        });
+    }
+
+    public function joinEvent(string $id, int $userId, bool $joined): ?array
+    {
+        return DB::transaction(function () use ($id, $userId, $joined): ?array {
+            $event = DB::table('ipa_event')->where('id', $id)->first();
+
+            if (! $event) {
+                return null;
+            }
+
+            $payload = [
+                'event_id' => (int) $id,
+                'user_id' => $userId,
+                'participation_status' => $joined ? 1 : 2,
+                'invited_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            $existing = DB::table('ipa_event_participant')
+                ->where('event_id', (int) $id)
+                ->where('user_id', $userId)
+                ->first();
+
+            if ($existing) {
+                DB::table('ipa_event_participant')->where('id', $existing->id)->update($payload);
+            } else {
+                $payload['created_at'] = now();
+                DB::table('ipa_event_participant')->insert($payload);
+            }
+
+            return [
+                'participationStatus' => $joined ? 'JOINED' : 'DECLINED',
+            ];
+        });
+    }
+
+    public function requestReschedule(string $id, array $attributes, int $requestedBy): ?array
+    {
+        return DB::transaction(function () use ($id, $attributes, $requestedBy): ?array {
+            $event = DB::table('ipa_event')->where('id', $id)->first();
+
+            if (! $event) {
+                return null;
+            }
+
+            $requestId = (int) DB::table('ipa_event_reschedule_request')->insertGetId([
+                'event_id' => (int) $id,
+                'requested_by' => $requestedBy,
+                'proposed_start_at' => Arr::get($attributes, 'proposedStartAt', Arr::get($attributes, 'proposed_start_at')),
+                'proposed_end_at' => Arr::get($attributes, 'proposedEndAt', Arr::get($attributes, 'proposed_end_at')),
+                'reason' => Arr::get($attributes, 'reason'),
+                'status' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return [
+                'id' => (string) $requestId,
+                'status' => 'PENDING',
+            ];
+        });
+    }
+
+    private function loadParticipants(array $eventIds): array
+    {
+        if ($eventIds === []) {
+            return [];
+        }
+
+        $rows = DB::table('ipa_event_participant')
+            ->whereIn('event_id', $eventIds)
+            ->orderBy('id')
+            ->get();
+
+        $grouped = [];
+
+        foreach ($rows as $row) {
+            $grouped[(int) $row->event_id][(int) $row->user_id] = (int) $row->participation_status;
+        }
+
+        return $grouped;
+    }
+
+    private function resolveEventType(mixed $value): int
+    {
+        if (is_numeric($value)) {
+            $intValue = (int) $value;
+
+            return array_key_exists($intValue, self::EVENT_TYPE_MAP) ? $intValue : 1;
+        }
+
+        $normalized = strtoupper(trim((string) $value));
+        $resolved = array_search($normalized, self::EVENT_TYPE_MAP, true);
+
+        return $resolved === false ? 1 : (int) $resolved;
+    }
+
+    private function resolveStatus(mixed $value): int
+    {
+        if (is_numeric($value)) {
+            $intValue = (int) $value;
+
+            return array_key_exists($intValue, self::STATUS_MAP) ? $intValue : 0;
+        }
+
+        $normalized = strtoupper(trim((string) $value));
+        $resolved = array_search($normalized, self::STATUS_MAP, true);
+
+        return $resolved === false ? 0 : (int) $resolved;
+    }
+
+    private function nullableInteger(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    private function requiredInteger(mixed $value, ?int $fallback = null): int
+    {
+        if ($value !== null && $value !== '' && is_numeric($value)) {
+            return (int) $value;
+        }
+
+        return $fallback ?? 1;
+    }
+
+    private function formatDate(mixed $value): string
+    {
+        return Carbon::parse((string) $value)->toIso8601String();
+    }
+}

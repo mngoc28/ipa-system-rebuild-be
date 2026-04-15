@@ -34,7 +34,7 @@ Ma nguon da duoc don de bat dau du an moi tren nen Laravel, giu nguyen cau truc 
    php artisan migrate
 
 6. Chay ung dung:
-   php artisan serve
+   php artisan serve --host=127.0.0.1 --port=8001
 
 ## Endpoint mac dinh sau khi don
 

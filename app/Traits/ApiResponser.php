@@ -16,16 +16,21 @@ trait ApiResponser
     protected function successResponse(
         $data,
         $message = null,
-        $code = HttpStatus::OK
+        $code = HttpStatus::OK,
+        $meta = null
     ) {
-        return response()->json(
-            [
-                "status"  => "success",
-                "message" => $message,
-                "data"    => $data,
-            ],
-            $code->value
-        );
+        $payload = [
+            "success" => true,
+            "status"  => "success",
+            "message" => $message,
+            "data"    => $data,
+        ];
+
+        if ($meta !== null) {
+            $payload["meta"] = $meta;
+        }
+
+        return response()->json($payload, $code->value);
     }
 
     /**
@@ -38,16 +43,21 @@ trait ApiResponser
     protected function createdResponse(
         $data,
         $message = null,
-        $code = HttpStatus::CREATED
+        $code = HttpStatus::CREATED,
+        $meta = null
     ) {
-        return response()->json(
-            [
-                "status"  => "success",
-                "message" => $message,
-                "data"    => $data,
-            ],
-            $code->value
-        );
+        $payload = [
+            "success" => true,
+            "status"  => "success",
+            "message" => $message,
+            "data"    => $data,
+        ];
+
+        if ($meta !== null) {
+            $payload["meta"] = $meta;
+        }
+
+        return response()->json($payload, $code->value);
     }
 
     /**
@@ -64,15 +74,18 @@ trait ApiResponser
         $code = HttpStatus::BAD_REQUEST,
         $data = null
     ) {
-        return response()->json(
-            [
-                "status"  => "error",
+        return response()->json([
+            "success" => false,
+            "status"  => "error",
+            "message" => $message,
+            "code"    => $err_code,
+            "data"    => $data,
+            "error"   => [
+                "code" => $err_code,
                 "message" => $message,
-                "code"    => $err_code,
-                "data"    => $data,
+                "details" => $data,
             ],
-            $code->value
-        );
+        ], $code->value);
     }
 
     /**
@@ -90,14 +103,19 @@ trait ApiResponser
         HttpStatus $code = HttpStatus::VALIDATION_ERROR,
         $data = null
     ) {
-        return response()->json(
-            [
-                "status" => "error",
-                "errors" => $message,
-                "code"   => $err_code,
+        return response()->json([
+            "success" => false,
+            "status" => "error",
+            "message" => __('auth.invalid_data'),
+            "errors" => $message,
+            "code"   => $err_code,
+            "data"   => $data,
+            "error"  => [
+                "code" => $err_code,
+                "message" => __('auth.invalid_data'),
+                "details" => $message,
             ],
-            $code->value
-        );
+        ], $code->value);
     }
 
     /**
@@ -117,6 +135,7 @@ trait ApiResponser
     ) {
         return response()->json(
             [
+                "success" => false,
                 "status"  => "error",
                 "message" => $message,
                 "code"    => $err_code,

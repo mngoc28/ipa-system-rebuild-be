@@ -12,19 +12,33 @@ final class IpaApprovalStepSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_approval_step')->exists()) {
-            return;
-        }
+        $approverUserId = (int) (DB::table('ipa_user')->min('id') ?? 1);
 
-        DB::table('ipa_approval_step')->insert([
-                'approval_request_id' => DB::table('ipa_approval_request')->value('id'),
-                'approver_user_id' => DB::table('ipa_user')->value('id'),
+        $requests = DB::table('ipa_approval_request')->orderBy('id')->get();
+
+        foreach ($requests as $request) {
+            $exists = DB::table('ipa_approval_step')->where('approval_request_id', $request->id)->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            $decision = match ((int) $request->status) {
+                1 => 1,
+                2 => 2,
+                default => 0,
+            };
+
+            DB::table('ipa_approval_step')->insert([
+                'approval_request_id' => $request->id,
+                'approver_user_id' => $approverUserId,
                 'step_order' => 1,
-                'decision' => 1,
-                'decision_note' => 'decision_note seed text',
-                'decided_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+                'decision' => $decision,
+                'decision_note' => $decision === 0 ? null : 'Seed decision note',
+                'decided_at' => $decision === 0 ? null : now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

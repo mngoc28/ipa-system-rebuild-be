@@ -12,16 +12,25 @@ final class IpaMdEventTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_md_event_type')->exists()) {
-            return;
-        }
+        $types = [
+            ['code' => 'MEETING', 'name_vi' => 'Họp'],
+            ['code' => 'VISIT', 'name_vi' => 'Thăm hỏi'],
+            ['code' => 'WORKSHOP', 'name_vi' => 'Hội thảo'],
+            ['code' => 'CEREMONY', 'name_vi' => 'Lễ nghi'],
+        ];
 
-        DB::table('ipa_md_event_type')->insert([
-                'code' => 'IPA_MD_EVENT_TYPE_CODE',
-                'name_vi' => 'name_vi_seed',
+        foreach ($types as $type) {
+            if (DB::table('ipa_md_event_type')->where('code', $type['code'])->exists()) {
+                continue;
+            }
+
+            DB::table('ipa_md_event_type')->insert([
+                'code' => $type['code'],
+                'name_vi' => $type['name_vi'],
                 'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

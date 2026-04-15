@@ -12,16 +12,24 @@ final class IpaMdSectorSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_md_sector')->exists()) {
-            return;
-        }
+        $sectors = [
+            ['code' => 'SECTOR_IT', 'name_vi' => 'Công nghệ cao'],
+            ['code' => 'SECTOR_LOGISTICS', 'name_vi' => 'Logistics'],
+            ['code' => 'SECTOR_FINTECH', 'name_vi' => 'Fintech'],
+            ['code' => 'SECTOR_RENEWABLE', 'name_vi' => 'Năng lượng tái tạo'],
+        ];
 
-        DB::table('ipa_md_sector')->insert([
-                'code' => 'IPA_MD_SECTOR_CODE',
-                'name_vi' => 'name_vi_seed',
+        foreach ($sectors as $sector) {
+            if (DB::table('ipa_md_sector')->where('code', $sector['code'])->exists()) {
+                continue;
+            }
+
+            DB::table('ipa_md_sector')->insert([
+                ...$sector,
                 'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

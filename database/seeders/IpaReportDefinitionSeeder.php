@@ -12,18 +12,42 @@ final class IpaReportDefinitionSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_report_definition')->exists()) {
-            return;
-        }
+        $roleId = DB::table('ipa_role')->value('id');
 
-        DB::table('ipa_report_definition')->insert([
-                'report_code' => 'IPA_REPORT_DEFINITION_CODE',
-                'report_name' => 'report_name_seed',
+        $definitions = [
+            [
+                'report_code' => 'CITY_INVESTMENT_MONTHLY',
+                'report_name' => 'Báo cáo xúc tiến đầu tư thành phố theo tháng',
                 'scope_type' => 1,
-                'owner_role_id' => DB::table('ipa_role')->value('id'),
-                'query_config' => json_encode(['k' => 'v']),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+                'owner_role_id' => $roleId,
+                'query_config' => json_encode(['scope' => 'city', 'period' => 'monthly', 'section' => 'investment']),
+            ],
+            [
+                'report_code' => 'CITY_FDI_QUARTERLY',
+                'report_name' => 'Báo cáo dòng vốn FDI quý',
+                'scope_type' => 1,
+                'owner_role_id' => $roleId,
+                'query_config' => json_encode(['scope' => 'city', 'period' => 'quarterly', 'section' => 'fdi']),
+            ],
+            [
+                'report_code' => 'CITY_PCI_FORECAST',
+                'report_name' => 'Báo cáo dự báo PCI và tăng trưởng',
+                'scope_type' => 1,
+                'owner_role_id' => $roleId,
+                'query_config' => json_encode(['scope' => 'city', 'period' => 'forecast', 'section' => 'pci']),
+            ],
+        ];
+
+        foreach ($definitions as $definition) {
+            if (DB::table('ipa_report_definition')->where('report_code', $definition['report_code'])->exists()) {
+                continue;
+            }
+
+            DB::table('ipa_report_definition')->insert([
+                ...$definition,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }
