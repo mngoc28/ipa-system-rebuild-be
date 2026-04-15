@@ -12,16 +12,26 @@ final class IpaMdApprovalStatusSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_md_approval_status')->exists()) {
-            return;
-        }
+        $rows = [
+            ['code' => 'PENDING', 'name_vi' => 'Chờ phê duyệt', 'is_active' => true],
+            ['code' => 'APPROVED', 'name_vi' => 'Đã phê duyệt', 'is_active' => true],
+            ['code' => 'REJECTED', 'name_vi' => 'Từ chối', 'is_active' => true],
+        ];
 
-        DB::table('ipa_md_approval_status')->insert([
-                'code' => 'IPA_MD_APPROVAL_STATUS_CODE',
-                'name_vi' => 'name_vi_seed',
-                'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        foreach ($rows as $row) {
+            $exists = DB::table('ipa_md_approval_status')->where('code', $row['code'])->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            DB::table('ipa_md_approval_status')->insert([
+                'code' => $row['code'],
+                'name_vi' => $row['name_vi'],
+                'is_active' => $row['is_active'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

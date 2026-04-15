@@ -12,21 +12,64 @@ final class IpaUserSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_user')->exists()) {
-            return;
-        }
+        $unitId = DB::table('ipa_org_unit')->value('id');
 
-        DB::table('ipa_user')->insert([
-                'username' => 'username_seed',
-                'email' => 'seed_ipa_user@example.com',
-                'full_name' => 'full_name_seed',
-                'phone' => '0900000000',
-                'avatar_url' => 'avatar_url seed text',
+        $users = [
+            [
+                'username' => 'admin',
+                'email' => 'admin@danang.gov.vn',
+                'full_name' => 'Nguyễn Văn Quản Trị',
+                'phone' => '0905000001',
+                'avatar_url' => null,
                 'status' => 1,
-                'primary_unit_id' => DB::table('ipa_org_unit')->value('id'),
+                'primary_unit_id' => $unitId,
                 'last_login_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'username' => 'director',
+                'email' => 'director@danang.gov.vn',
+                'full_name' => 'Hồ Kỳ Minh',
+                'phone' => '0905000002',
+                'avatar_url' => null,
+                'status' => 1,
+                'primary_unit_id' => $unitId,
+                'last_login_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'username' => 'manager',
+                'email' => 'manager@danang.gov.vn',
+                'full_name' => 'Nguyễn Minh Châu',
+                'phone' => '0905000003',
+                'avatar_url' => null,
+                'status' => 1,
+                'primary_unit_id' => $unitId,
+                'last_login_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'username' => 'staff',
+                'email' => 'staff@danang.gov.vn',
+                'full_name' => 'Trần Thu Hà',
+                'phone' => '0905000004',
+                'avatar_url' => null,
+                'status' => 1,
+                'primary_unit_id' => $unitId,
+                'last_login_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ];
+
+        foreach ($users as $user) {
+            DB::table('ipa_user')->updateOrInsert(
+                ['username' => $user['username']],
+                $user
+            );
+        }
     }
 }

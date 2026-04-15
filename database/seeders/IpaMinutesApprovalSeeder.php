@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaMinutesApprovalSeeder extends Seeder
 {
@@ -17,13 +16,15 @@ final class IpaMinutesApprovalSeeder extends Seeder
         }
 
         DB::table('ipa_minutes_approval')->insert([
+            [
                 'minutes_id' => DB::table('ipa_minutes')->value('id'),
                 'approver_user_id' => DB::table('ipa_user')->value('id'),
                 'decision' => 1,
-                'decision_note' => 'decision_note seed text',
+                'decision_note' => 'Đã xem và đồng ý với nội dung biên bản.',
                 'decided_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
     }
 }

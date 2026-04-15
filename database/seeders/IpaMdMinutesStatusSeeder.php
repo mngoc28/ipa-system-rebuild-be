@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaMdMinutesStatusSeeder extends Seeder
 {
@@ -17,11 +16,9 @@ final class IpaMdMinutesStatusSeeder extends Seeder
         }
 
         DB::table('ipa_md_minutes_status')->insert([
-                'code' => 'IPA_MD_MINUTES_STATUS_CODE',
-                'name_vi' => 'name_vi_seed',
-                'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
+            ['code' => 'DRAFT', 'name_vi' => 'Bản nháp', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['code' => 'INTERNAL', 'name_vi' => 'Nội bộ', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['code' => 'FINAL', 'name_vi' => 'Đã ký', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 }

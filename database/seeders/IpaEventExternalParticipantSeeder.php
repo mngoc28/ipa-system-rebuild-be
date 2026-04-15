@@ -12,16 +12,22 @@ final class IpaEventExternalParticipantSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_event_external_participant')->exists()) {
+        $eventId = DB::table('ipa_event')->value('id');
+
+        if ($eventId === null) {
+            return;
+        }
+
+        if (DB::table('ipa_event_external_participant')->where('event_id', $eventId)->exists()) {
             return;
         }
 
         DB::table('ipa_event_external_participant')->insert([
-                'event_id' => DB::table('ipa_event')->value('id'),
-                'full_name' => 'full_name_seed',
-                'organization_name' => 'organization_name_seed',
-                'email' => 'seed_ipa_event_external_participant@example.com',
-                'phone' => '0900000000',
+            'event_id' => $eventId,
+            'full_name' => 'Nguyễn Quốc Huy',
+            'organization_name' => 'Samsung Electronics Việt Nam',
+            'email' => 'quochuy@samsung.example',
+            'phone' => '0909000001',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
