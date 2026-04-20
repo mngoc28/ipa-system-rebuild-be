@@ -11,14 +11,34 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Class MinutesController
+ *
+ * Manages the lifecycle of meeting minutes, including creation, versioning,
+ * commenting, and approval workflows.
+ *
+ * @package App\Http\Controllers
+ */
 final class MinutesController extends Controller
 {
+    /**
+     * MinutesController constructor.
+     *
+     * @param MinutesService $minutesService
+     * @param MinutesValidation $minutesValidation
+     */
     public function __construct(
         private MinutesService $minutesService,
         private MinutesValidation $minutesValidation,
     ) {
     }
 
+    /**
+     * List meeting minutes with filtering and pagination.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function index(Request $request): JsonResponse
     {
         $validator = $this->minutesValidation->indexValidation($request);
@@ -36,6 +56,12 @@ final class MinutesController extends Controller
         return $this->successResponse($result['data'], $result['message'], HttpStatus::OK, $result['data']['meta'] ?? null);
     }
 
+    /**
+     * Retrieve details for a specific set of meeting minutes.
+     *
+     * @param string $id
+     * @return JsonResponse
+     */
     public function show(string $id): JsonResponse
     {
         $result = $this->minutesService->getById($id);
@@ -47,6 +73,12 @@ final class MinutesController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Create a new meeting minutes record.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function store(Request $request): JsonResponse
     {
         $validator = $this->minutesValidation->storeValidation($request);
@@ -64,6 +96,13 @@ final class MinutesController extends Controller
         return $this->createdResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Create a new version/draft for an existing meeting minutes record.
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
     public function createVersion(Request $request, string $id): JsonResponse
     {
         $validator = $this->minutesValidation->versionValidation($request);
@@ -89,6 +128,13 @@ final class MinutesController extends Controller
         return $this->createdResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Add a comment to a meeting minutes record.
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
     public function createComment(Request $request, string $id): JsonResponse
     {
         $validator = $this->minutesValidation->commentValidation($request);
@@ -106,6 +152,13 @@ final class MinutesController extends Controller
         return $this->createdResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Record an approval or rejection for a meeting minutes record.
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
     public function approve(Request $request, string $id): JsonResponse
     {
         $validator = $this->minutesValidation->approveValidation($request);
@@ -123,6 +176,13 @@ final class MinutesController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Resolves the user identity for the current request.
+     * Supports authenticated users and mock overrides for development.
+     *
+     * @param Request $request
+     * @return int User ID.
+     */
     private function resolveUserId(Request $request): int
     {
         $authenticatedUserId = (int) ($request->user()?->id ?? 0);

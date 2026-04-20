@@ -6,18 +6,39 @@ namespace App\Services;
 
 use App\Repositories\TaskRepository\TaskRepositoryInterface;
 use App\Models\AdminUser;
+use App\Models\Task;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Class TaskService
+ *
+ * Orchestrates business logic for task management, including CRUD operations,
+ * commenting with @mentions, and attachment handling.
+ *
+ * @package App\Services
+ */
 final class TaskService
 {
+    /**
+     * TaskService constructor.
+     *
+     * @param TaskRepositoryInterface $taskRepository
+     * @param NotificationService $notificationService
+     */
     public function __construct(
         private TaskRepositoryInterface $taskRepository,
         private NotificationService $notificationService,
     ) {
     }
 
+    /**
+     * Retrieve a paginated list of tasks with search and filter support.
+     *
+     * @param Request $request
+     * @return array Standard response bundle.
+     */
     public function getAll(Request $request): array
     {
         try {
@@ -39,9 +60,16 @@ final class TaskService
         }
     }
 
+    /**
+     * Retrieve a specific task by ID.
+     *
+     * @param int $id
+     * @return array Standard response bundle.
+     */
     public function getById(int $id): array
     {
         try {
+            /** @var Task|null $task */
             $task = $this->taskRepository->find($id);
 
             if (!$task) {
@@ -71,9 +99,16 @@ final class TaskService
         }
     }
 
+    /**
+     * Create a new task.
+     *
+     * @param array $data Task attributes.
+     * @return array Standard response bundle.
+     */
     public function create(array $data): array
     {
         try {
+            /** @var Task $task */
             $task = $this->taskRepository->create($data);
 
             return [
@@ -95,9 +130,17 @@ final class TaskService
         }
     }
 
+    /**
+     * Update an existing task.
+     *
+     * @param int $id
+     * @param array $data New attributes for the task.
+     * @return array Standard response bundle.
+     */
     public function update(int $id, array $data): array
     {
         try {
+            /** @var Task $task */
             $task = $this->taskRepository->update($id, $data);
 
             return [
@@ -120,6 +163,12 @@ final class TaskService
         }
     }
 
+    /**
+     * Delete an existing task record.
+     *
+     * @param int $id
+     * @return array Standard response bundle.
+     */
     public function delete(int $id): array
     {
         try {
@@ -144,9 +193,16 @@ final class TaskService
         }
     }
 
+    /**
+     * Retrieve all comments for a specific task.
+     *
+     * @param int $taskId
+     * @return array Standard response bundle with comments list.
+     */
     public function getComments(int $taskId): array
     {
         try {
+            /** @var Task|null $task */
             $task = $this->taskRepository->find($taskId);
             if (!$task) {
                 return ['success' => false, 'message' => __('tasks.messages.not_found')];
@@ -163,9 +219,17 @@ final class TaskService
         }
     }
 
+    /**
+     * Add a new comment to a task and trigger notifications.
+     *
+     * @param int $taskId
+     * @param array $data Contains 'content'.
+     * @return array Standard response bundle with created comment.
+     */
     public function addComment(int $taskId, array $data): array
     {
         try {
+            /** @var Task|null $task */
             $task = $this->taskRepository->find($taskId);
             if (!$task) {
                 return ['success' => false, 'message' => __('tasks.messages.not_found')];
@@ -192,7 +256,14 @@ final class TaskService
     /**
      * Send notifications to relevant users when a comment is added.
      */
-    private function sendCommentNotifications($task, $comment): void
+    /**
+     * Send notifications to relevant users when a comment is added.
+     * Includes creator, assignees, and @mentioned users.
+     *
+     * @param Task $task The task model instance.
+     * @param \App\Models\TaskComment $comment The comment model instance.
+     */
+    private function sendCommentNotifications(Task $task, \App\Models\TaskComment $comment): void
     {
         $commenterId = auth()->id();
         $recipients = collect();
@@ -235,6 +306,12 @@ final class TaskService
      * Parse text for @mentions and return user IDs.
      * Expected format: @[Full Name] or @Full Name (depending on frontend implementation)
      */
+    /**
+     * Parse text for @mentions in the format @[Full Name] and return matching user IDs.
+     *
+     * @param string $text
+     * @return array Array of user IDs.
+     */
     private function parseMentions(string $text): array
     {
         // Matches pattern @[Full Name]
@@ -248,9 +325,16 @@ final class TaskService
         return AdminUser::whereIn('full_name', $names)->pluck('id')->toArray();
     }
 
+    /**
+     * Retrieve all file attachments for a task.
+     *
+     * @param int $taskId
+     * @return array Standard response bundle with attachments list.
+     */
     public function getAttachments(int $taskId): array
     {
         try {
+            /** @var Task|null $task */
             $task = $this->taskRepository->find($taskId);
             if (!$task) {
                 return ['success' => false, 'message' => __('tasks.messages.not_found')];
@@ -265,9 +349,17 @@ final class TaskService
         }
     }
 
+    /**
+     * Upload and attach a file to a specific task.
+     *
+     * @param int $taskId
+     * @param mixed $file The uploaded file object.
+     * @return array Standard response bundle.
+     */
     public function addAttachment(int $taskId, $file): array
     {
         try {
+            /** @var Task|null $task */
             $task = $this->taskRepository->find($taskId);
             if (!$task) {
                 return ['success' => false, 'message' => __('tasks.messages.not_found')];
@@ -294,9 +386,17 @@ final class TaskService
         }
     }
 
+    /**
+     * Remove a file attachment from a task and storage.
+     *
+     * @param int $taskId
+     * @param int $attachmentId
+     * @return array Standard response bundle.
+     */
     public function deleteAttachment(int $taskId, int $attachmentId): array
     {
         try {
+            /** @var Task|null $task */
             $task = $this->taskRepository->find($taskId);
             if (!$task) {
                 return ['success' => false, 'message' => __('tasks.messages.not_found')];

@@ -7,6 +7,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Class Folder
+ *
+ * Represents a virtual directory for organizing files.
+ *
+ * @package App\Models
+ *
+ * @property int $id
+ * @property string $name
+ * @property int|null $parent_folder_id
+ * @property int|null $owner_user_id
+ * @property int $scope_type 0: Private, 1: Shared, 2: System, etc.
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 final class Folder extends Model
 {
     use HasFactory;

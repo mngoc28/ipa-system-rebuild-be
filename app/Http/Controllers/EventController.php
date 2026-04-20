@@ -11,14 +11,34 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Class EventController
+ *
+ * Manages calendar events, registrations, and rescheduling requests.
+ * Orchestrates event lifecycle from creation to participation tracking.
+ *
+ * @package App\Http\Controllers
+ */
 final class EventController extends Controller
 {
+    /**
+     * EventController constructor.
+     *
+     * @param EventService $eventService
+     * @param EventValidation $eventValidation
+     */
     public function __construct(
         private EventService $eventService,
         private EventValidation $eventValidation,
     ) {
     }
 
+    /**
+     * List events with filtering and pagination.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function index(Request $request): JsonResponse
     {
         $validator = $this->eventValidation->indexValidation($request);
@@ -36,6 +56,12 @@ final class EventController extends Controller
         return $this->successResponse($result['data'], $result['message'], HttpStatus::OK, $result['data']['meta'] ?? null);
     }
 
+    /**
+     * Retrieve details for a specific event.
+     *
+     * @param string $id
+     * @return JsonResponse
+     */
     public function show(string $id): JsonResponse
     {
         $result = $this->eventService->getById($id);
@@ -50,6 +76,12 @@ final class EventController extends Controller
         ], $result['message']);
     }
 
+    /**
+     * Create a new event.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function store(Request $request): JsonResponse
     {
         $validator = $this->eventValidation->storeValidation($request);
@@ -67,6 +99,13 @@ final class EventController extends Controller
         return $this->createdResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Update an existing event's details.
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
     public function update(Request $request, string $id): JsonResponse
     {
         $validator = $this->eventValidation->updateValidation($request);
@@ -84,6 +123,12 @@ final class EventController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Remove an event from the system.
+     *
+     * @param string $id
+     * @return JsonResponse
+     */
     public function destroy(string $id): JsonResponse
     {
         $result = $this->eventService->delete($id);
@@ -95,6 +140,13 @@ final class EventController extends Controller
         return $this->successResponse(null, $result['message']);
     }
 
+    /**
+     * Record a user's participation status (join/leave) for an event.
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
     public function join(Request $request, string $id): JsonResponse
     {
         $validator = $this->eventValidation->joinValidation($request);
@@ -117,6 +169,13 @@ final class EventController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Submit a request to reschedule an event.
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
     public function requestReschedule(Request $request, string $id): JsonResponse
     {
         $validator = $this->eventValidation->rescheduleValidation($request);
@@ -139,6 +198,12 @@ final class EventController extends Controller
         return $this->createdResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Resolves the user identity for the current request.
+     *
+     * @param Request $request
+     * @return int User ID.
+     */
     private function resolveUserId(Request $request): int
     {
         $authenticatedUserId = (int) ($request->user()?->id ?? 0);

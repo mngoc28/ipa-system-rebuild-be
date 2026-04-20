@@ -9,10 +9,21 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Enums\HttpStatus;
 
+/**
+ * Class AnnouncementController
+ *
+ * Handles the lifecycle of system-wide announcements, including broadcasting information,
+ * warnings, and success messages with optional scheduling.
+ *
+ * @package App\Http\Controllers
+ */
 final class AnnouncementController extends Controller
 {
     /**
      * Get list of announcements with pagination and basic filter.
+     *
+     * @param Request $request
+     * @return JsonResponse
      */
     public function index(Request $request): JsonResponse
     {
@@ -30,6 +41,9 @@ final class AnnouncementController extends Controller
 
     /**
      * Store a new announcement.
+     *
+     * @param Request $request
+     * @return JsonResponse
      */
     public function store(Request $request): JsonResponse
     {
@@ -49,6 +63,10 @@ final class AnnouncementController extends Controller
 
     /**
      * Update an announcement.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return JsonResponse
      */
     public function update(Request $request, int $id): JsonResponse
     {
@@ -74,6 +92,9 @@ final class AnnouncementController extends Controller
 
     /**
      * Remove an announcement.
+     *
+     * @param int $id
+     * @return JsonResponse
      */
     public function destroy(int $id): JsonResponse
     {

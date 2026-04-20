@@ -9,13 +9,32 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Class TeamService
+ *
+ * Orchestrates business logic for team management and organizational hierarchy.
+ * Handles dashboard statistics and member management.
+ *
+ * @package App\Services
+ */
 final class TeamService
 {
+    /**
+     * TeamService constructor.
+     *
+     * @param TeamRepositoryInterface $teamRepository
+     */
     public function __construct(
         private TeamRepositoryInterface $teamRepository,
     ) {
     }
 
+    /**
+     * Retrieve aggregated statistics and metrics for the teams dashboard.
+     *
+     * @param Request $request Filter and period parameters.
+     * @return array Standard response bundle.
+     */
     public function getDashboard(Request $request): array
     {
         try {
@@ -31,6 +50,12 @@ final class TeamService
         }
     }
 
+    /**
+     * Retrieve a list of organizational units (teams/departments).
+     *
+     * @param Request $request Filtering parameters.
+     * @return array Standard response bundle.
+     */
     public function getUnits(Request $request): array
     {
         try {
@@ -46,6 +71,12 @@ final class TeamService
         }
     }
 
+    /**
+     * Add a new member to a team or organizational unit.
+     *
+     * @param array $attributes Member details (user_id, team_id, role, etc.).
+     * @return array|null Normalized member data or null on failure.
+     */
     public function createMember(array $attributes): ?array
     {
         try {

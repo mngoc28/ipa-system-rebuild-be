@@ -15,16 +15,32 @@ use Throwable;
 
 final class SystemSettingRepository extends BaseRepository implements SystemSettingRepositoryInterface
 {
+    /**
+     * Get the model class name for the repository.
+     *
+     * @return string
+     */
     public function getModel(): string
     {
         return SystemSetting::class;
     }
 
+    /**
+     * Get all currently supported system setting groups from configuration.
+     *
+     * @return array
+     */
     public function getAllowedGroups(): array
     {
         return array_keys(config('system_settings.groups', []));
     }
 
+    /**
+     * Retrieve all setting items, filtered by group, and merged with their definitions and stored values.
+     *
+     * @param array|null $groups
+     * @return array
+     */
     public function getAllByGroups(?array $groups = null): array
     {
         $definitions = config('system_settings.groups', []);
@@ -53,6 +69,13 @@ final class SystemSettingRepository extends BaseRepository implements SystemSett
         ];
     }
 
+    /**
+     * Batch save multiple configuration items, handling encryption for secret fields.
+     *
+     * @param array $items
+     * @param int|null $updatedBy
+     * @return int
+     */
     public function saveItems(array $items, ?int $updatedBy = null): int
     {
         $definitions = $this->definitionMap();
@@ -81,6 +104,12 @@ final class SystemSettingRepository extends BaseRepository implements SystemSett
         return $updatedCount;
     }
 
+    /**
+     * Get the plaintext resolved value for a setting, handling decryption if the setting is a secret.
+     *
+     * @param string $key
+     * @return string|null
+     */
     public function getResolvedValue(string $key): ?string
     {
         $definition = $this->definitionMap()[$key] ?? null;
@@ -102,6 +131,12 @@ final class SystemSettingRepository extends BaseRepository implements SystemSett
         return (string) ($record->setting_value ?? $definition['default_value'] ?? '');
     }
 
+    /**
+     * Check if a setting has a non-empty value (either plaintext or encrypted).
+     *
+     * @param string $key
+     * @return bool
+     */
     public function hasValue(string $key): bool
     {
         $record = DB::table('ipa_system_setting')->where('setting_key', $key)->first();
@@ -116,6 +151,11 @@ final class SystemSettingRepository extends BaseRepository implements SystemSett
         return $hasValue || $hasSecret;
     }
 
+    /**
+     * Flatten all group-based definitions into a single key-to-definition map.
+     *
+     * @return array
+     */
     private function definitionMap(): array
     {
         $map = [];
@@ -129,6 +169,15 @@ final class SystemSettingRepository extends BaseRepository implements SystemSett
         return $map;
     }
 
+    /**
+     * Standardize a setting definition and its optional database record into a response array.
+     * Handles masking for secret values.
+     *
+     * @param string $group
+     * @param array $definition
+     * @param mixed $record
+     * @return array
+     */
     private function normalizeDefinition(string $group, array $definition, mixed $record): array
     {
         $isSecret = (bool) ($definition['is_secret'] ?? false);
@@ -152,6 +201,14 @@ final class SystemSettingRepository extends BaseRepository implements SystemSett
         ];
     }
 
+    /**
+     * Insert or update a setting record in the database, handling data encryption for secrets.
+     *
+     * @param array $definition
+     * @param string $value
+     * @param int|null $updatedBy
+     * @return void
+     */
     private function persistDefinition(array $definition, string $value, ?int $updatedBy = null): void
     {
         $key = (string) $definition['key'];
@@ -182,11 +239,23 @@ final class SystemSettingRepository extends BaseRepository implements SystemSett
         ]);
     }
 
+    /**
+     * Encrypt a sensitive setting value using the system's encryption key.
+     *
+     * @param string $value
+     * @return string
+     */
     private function encryptSecret(string $value): string
     {
         return Crypt::encryptString($value);
     }
 
+    /**
+     * Decrypt a protected setting value, with a fallback to the raw value if decryption fails.
+     *
+     * @param string|null $value
+     * @return string|null
+     */
     private function decryptSecret(?string $value): ?string
     {
         if ($value === null || $value === '') {

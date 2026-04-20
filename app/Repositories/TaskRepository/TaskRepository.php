@@ -11,11 +11,23 @@ use Illuminate\Support\Facades\DB;
 
 final class TaskRepository extends BaseRepository implements TaskRepositoryInterface
 {
+    /**
+     * Get the model class name for the repository.
+     *
+     * @return string
+     */
     public function getModel(): string
     {
         return Task::class;
     }
 
+    /**
+     * Get a paginated list of tasks with complex data scoping and counting.
+     * Scoping ensures users only see tasks they created, are assigned to, or involve their unit.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function getPaginated(Request $request): array
     {
         $page = max(1, (int) $request->input('page', 1));
@@ -104,12 +116,19 @@ final class TaskRepository extends BaseRepository implements TaskRepositoryInter
         ];
     }
 
+    /**
+     * Create a new task and synchronize its assignees within a transaction.
+     *
+     * @param array $attributes
+     * @return \Illuminate\Database\Eloquent\Model
+     */
     public function create($attributes = [])
     {
         return DB::transaction(function () use ($attributes) {
             $assigneeIds = $attributes['assignee_ids'] ?? [];
             unset($attributes['assignee_ids']);
 
+            /** @var Task $task */
             $task = parent::create($attributes);
 
             if (!empty($assigneeIds)) {
@@ -120,12 +139,20 @@ final class TaskRepository extends BaseRepository implements TaskRepositoryInter
         });
     }
 
+    /**
+     * Update an existing task and its assignees within a transaction.
+     *
+     * @param mixed $id
+     * @param array $attributes
+     * @return \Illuminate\Database\Eloquent\Model
+     */
     public function update($id, $attributes = [])
     {
         return DB::transaction(function () use ($id, $attributes) {
             $assigneeIds = $attributes['assignee_ids'] ?? null;
             unset($attributes['assignee_ids']);
 
+            /** @var Task $task */
             $task = parent::update($id, $attributes);
 
             if ($assigneeIds !== null) {

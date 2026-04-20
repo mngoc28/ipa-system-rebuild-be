@@ -5,6 +5,14 @@ namespace App\Traits;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
+/**
+ * Trait HasUuid
+ *
+ * Automatically generates a UUID for the model's primary key
+ * when a new record is being created.
+ *
+ * @package App\Traits
+ */
 trait HasUuid
 {
     protected static function boot()

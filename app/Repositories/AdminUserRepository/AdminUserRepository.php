@@ -15,11 +15,22 @@ use Throwable;
 
 final class AdminUserRepository extends BaseRepository implements AdminUserRepositoryInterface
 {
+    /**
+     * Get the model class name for the repository.
+     *
+     * @return string
+     */
     public function getModel(): string
     {
         return AdminUser::class;
     }
 
+    /**
+     * Get paginated list of administrative users with filtering and sorting.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function getPaginated(Request $request): array
     {
         $page = max(1, (int) $request->input('page', 1));
@@ -129,6 +140,12 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         ];
     }
 
+    /**
+     * Find an administrative user by their ID and normalize the data.
+     *
+     * @param string $userId
+     * @return array|null
+     */
     public function findByUserId(string $userId): ?array
     {
         $row = DB::table('ipa_user as user')
@@ -158,6 +175,12 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         return $this->normalizeUser($row, $roles[(int) $row->id] ?? [], $units[(int) $row->id] ?? null);
     }
 
+    /**
+     * Create a new administrative user and synchronize roles and unit assignments.
+     *
+     * @param array $attributes
+     * @return array
+     */
     public function createUser(array $attributes): array
     {
         return DB::transaction(function () use ($attributes): array {
@@ -185,6 +208,13 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         });
     }
 
+    /**
+     * Update an existing administrative user's details and synchronizations.
+     *
+     * @param string $userId
+     * @param array $attributes
+     * @return array|null
+     */
     public function updateUser(string $userId, array $attributes): ?array
     {
         return DB::transaction(function () use ($userId, $attributes): ?array {
@@ -233,6 +263,13 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         });
     }
 
+    /**
+     * Lock or unlock a user account by updating their status.
+     *
+     * @param string $userId
+     * @param bool $locked
+     * @return array|null
+     */
     public function lockUser(string $userId, bool $locked): ?array
     {
         return DB::transaction(function () use ($userId, $locked): ?array {
@@ -253,6 +290,12 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         });
     }
 
+    /**
+     * Soft delete (transactional) a user by removing roles and assignments first.
+     *
+     * @param mixed $id
+     * @return bool|null
+     */
     public function delete($id)
     {
         return DB::transaction(function () use ($id): bool {
@@ -270,6 +313,12 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         });
     }
 
+    /**
+     * Load roles for a set of user IDs into a map.
+     *
+     * @param array $userIds
+     * @return array
+     */
     private function loadRoleMap(array $userIds): array
     {
         if ($userIds === []) {
@@ -297,6 +346,12 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         return $grouped;
     }
 
+    /**
+     * Load primary unit assignments for a set of user IDs into a map.
+     *
+     * @param array $userIds
+     * @return array
+     */
     private function loadUnitMap(array $userIds): array
     {
         if ($userIds === []) {
@@ -335,6 +390,14 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         return $grouped;
     }
 
+    /**
+     * Normalize a user database row into a standardized response array.
+     *
+     * @param object $row
+     * @param array $roles
+     * @param array|null $unit
+     * @return array
+     */
     private function normalizeUser(object $row, array $roles = [], ?array $unit = null): array
     {
         return [
@@ -354,6 +417,13 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         ];
     }
 
+    /**
+     * Synchronize user roles in the database.
+     *
+     * @param int $userId
+     * @param array $roleIds
+     * @return void
+     */
     private function syncUserRoles(int $userId, array $roleIds): void
     {
         DB::table('ipa_user_role')->where('user_id', $userId)->delete();
@@ -386,6 +456,13 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         DB::table('ipa_user_role')->insert($rows);
     }
 
+    /**
+     * Synchronize a user's primary unit assignment.
+     *
+     * @param int $userId
+     * @param mixed $unitId
+     * @return void
+     */
     private function syncUserUnit(int $userId, mixed $unitId): void
     {
         $resolvedUnitId = $this->resolveUnitId((string) $unitId);
@@ -411,6 +488,12 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         ]);
     }
 
+    /**
+     * Resolve a unit identifier (ID or code) to its database ID.
+     *
+     * @param string $unitId
+     * @return int|null
+     */
     private function resolveUnitId(string $unitId): ?int
     {
         $trimmed = trim($unitId);
@@ -438,6 +521,12 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         return $fallbackUnitId !== null ? (int) $fallbackUnitId : null;
     }
 
+    /**
+     * Resolve an array of role identifiers (IDs or codes) to database IDs.
+     *
+     * @param array $roleIds
+     * @return array
+     */
     private function resolveRoleIds(array $roleIds): array
     {
         if ($roleIds === []) {
@@ -470,6 +559,13 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         return array_values(array_unique($resolved));
     }
 
+    /**
+     * Get all active user IDs assigned to a specific role and unit.
+     *
+     * @param string $roleCode
+     * @param int $unitId
+     * @return array
+     */
     public function getIdsByRoleAndUnit(string $roleCode, int $unitId): array
     {
         return DB::table('ipa_user as user')
@@ -482,6 +578,13 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
             ->map(fn($id) => (int) $id)
             ->toArray();
     }
+    /**
+     * Update the avatar path for a user.
+     *
+     * @param string $userId
+     * @param string $path
+     * @return array|null
+     */
     public function updateAvatar(string $userId, string $path): ?array
     {
         return DB::transaction(function () use ($userId, $path): ?array {

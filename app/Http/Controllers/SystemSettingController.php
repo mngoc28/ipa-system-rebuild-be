@@ -19,14 +19,34 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
 
+/**
+ * Class SystemSettingController
+ *
+ * Manages global system configurations and provides operational
+ * health statistics for the administration dashboard.
+ *
+ * @package App\Http\Controllers
+ */
 final class SystemSettingController extends Controller
 {
+    /**
+     * SystemSettingController constructor.
+     *
+     * @param SystemSettingService $systemSettingService
+     * @param SystemSettingValidation $systemSettingValidation
+     */
     public function __construct(
         private SystemSettingService $systemSettingService,
         private SystemSettingValidation $systemSettingValidation,
     ) {
     }
 
+    /**
+     * List all system settings with filtering (By category).
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function index(Request $request): JsonResponse
     {
         $validator = $this->systemSettingValidation->indexValidation($request);
@@ -44,6 +64,12 @@ final class SystemSettingController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Batch update system setting values.
+     *
+     * @param Request $request Contains 'items' array of key-value pairs.
+     * @return JsonResponse
+     */
     public function update(Request $request): JsonResponse
     {
         $validator = $this->systemSettingValidation->updateValidation($request);
@@ -66,6 +92,10 @@ final class SystemSettingController extends Controller
 
     /**
      * Get operational statistics for the Admin dashboard.
+     * Aggregates data on online users, storage usage, CPU load, and system health.
+     *
+     * @param Request $request
+     * @return JsonResponse
      */
     public function getOperationalStats(Request $request): JsonResponse
     {
@@ -135,6 +165,13 @@ final class SystemSettingController extends Controller
         ], 'Operational stats fetched successfully.');
     }
 
+    /**
+     * Formats a byte count into a human-readable string (e.g., MB, GB).
+     *
+     * @param int $bytes
+     * @param int $precision Number of decimal places.
+     * @return string
+     */
     private function formatBytes(int $bytes, int $precision = 2): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];

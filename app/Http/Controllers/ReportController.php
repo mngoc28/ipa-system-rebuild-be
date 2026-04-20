@@ -10,14 +10,34 @@ use App\Services\ReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Class ReportController
+ *
+ * Manages system reporting, including report definitions,
+ * execution of report runs, and retrieval of generated report data.
+ *
+ * @package App\Http\Controllers
+ */
 final class ReportController extends Controller
 {
+    /**
+     * ReportController constructor.
+     *
+     * @param ReportService $reportService
+     * @param ReportValidation $reportValidation
+     */
     public function __construct(
         private ReportService $reportService,
         private ReportValidation $reportValidation,
     ) {
     }
 
+    /**
+     * List available report definitions (Templates).
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function definitions(Request $request): JsonResponse
     {
         $validator = $this->reportValidation->definitionsValidation($request);
@@ -35,6 +55,12 @@ final class ReportController extends Controller
         return $this->successResponse($result['data'], $result['message'], HttpStatus::OK, $result['data']['meta'] ?? null);
     }
 
+    /**
+     * Retrieve aggregated report summary (Counters, latest runs).
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function summary(Request $request): JsonResponse
     {
         $result = $this->reportService->getSummary();
@@ -46,6 +72,12 @@ final class ReportController extends Controller
         return $this->successResponse($result['data'], $result['message'], HttpStatus::OK);
     }
 
+    /**
+     * Execute a report run with specific parameters.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function store(Request $request): JsonResponse
     {
         $validator = $this->reportValidation->createRunValidation($request);
@@ -66,6 +98,13 @@ final class ReportController extends Controller
         return $this->createdResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Retrieve details and results for a specific report run.
+     *
+     * @param Request $request
+     * @param string $runId Report run ID.
+     * @return JsonResponse
+     */
     public function show(Request $request, string $runId): JsonResponse
     {
         $validator = $this->reportValidation->showRunValidation($runId);

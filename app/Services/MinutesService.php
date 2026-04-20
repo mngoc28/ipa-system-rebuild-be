@@ -9,13 +9,31 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Class MinutesService
+ *
+ * Manages the lifecycle of meeting minutes, including versioning, approval workflows, and commenting.
+ *
+ * @package App\Services
+ */
 final class MinutesService
 {
+    /**
+     * MinutesService constructor.
+     *
+     * @param MinutesRepositoryInterface $minutesRepository
+     */
     public function __construct(
         private MinutesRepositoryInterface $minutesRepository,
     ) {
     }
 
+    /**
+     * Retrieve a paginated list of meeting minutes.
+     *
+     * @param Request $request search and sort parameters.
+     * @return array Standard response bundle.
+     */
     public function getAll(Request $request): array
     {
         try {
@@ -35,6 +53,12 @@ final class MinutesService
         }
     }
 
+    /**
+     * Get detailed information for a specific meeting minutes entry, including versions and comments.
+     *
+     * @param string $id
+     * @return array Standard response bundle.
+     */
     public function getById(string $id): array
     {
         try {
@@ -64,6 +88,13 @@ final class MinutesService
         }
     }
 
+    /**
+     * Create a new meeting minutes entry.
+     *
+     * @param array $attributes Title, content, and metadata.
+     * @param int $ownerUserId Identifier of the user creating the minutes.
+     * @return array Standard response bundle.
+     */
     public function create(array $attributes, int $ownerUserId): array
     {
         try {
@@ -93,6 +124,14 @@ final class MinutesService
         }
     }
 
+    /**
+     * Create a new version for an existing meeting minutes entry.
+     *
+     * @param string $id The minutes identifier.
+     * @param array $attributes New content and change summary.
+     * @param int $editedBy Identifier of the editor.
+     * @return array Standard response bundle.
+     */
     public function createVersion(string $id, array $attributes, int $editedBy): array
     {
         try {
@@ -122,6 +161,14 @@ final class MinutesService
         }
     }
 
+    /**
+     * Add a comment to a meeting minutes entry.
+     *
+     * @param string $id
+     * @param array $attributes Comment text and target section (if any).
+     * @param int $commenterUserId Identifier of the commenter.
+     * @return array Standard response bundle.
+     */
     public function createComment(string $id, array $attributes, int $commenterUserId): array
     {
         try {
@@ -151,6 +198,14 @@ final class MinutesService
         }
     }
 
+    /**
+     * Process an approval decision for a meeting minutes entry.
+     *
+     * @param string $id
+     * @param array $attributes Approval status and remarks.
+     * @param int $approverUserId Identifier of the approver.
+     * @return array Standard response bundle.
+     */
     public function approve(string $id, array $attributes, int $approverUserId): array
     {
         try {

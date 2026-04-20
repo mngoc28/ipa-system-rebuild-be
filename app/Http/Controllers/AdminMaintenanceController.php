@@ -9,8 +9,21 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
 use Throwable;
 
+/**
+ * Class AdminMaintenanceController
+ *
+ * Handles administrative maintenance tasks such as clearing various system caches
+ * (route, view, config, etc.) via Artisan commands.
+ *
+ * @package App\Http\Controllers
+ */
 final class AdminMaintenanceController extends Controller
 {
+    /**
+     * Clear all application caches (config, route, view, and generic cache).
+     *
+     * @return JsonResponse
+     */
     public function clearCache(): JsonResponse
     {
         try {

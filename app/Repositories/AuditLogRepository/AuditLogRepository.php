@@ -13,11 +13,23 @@ use Illuminate\Support\Str;
 
 final class AuditLogRepository extends BaseRepository implements AuditLogRepositoryInterface
 {
+    /**
+     * Get the model class name for the repository.
+     *
+     * @return string
+     */
     public function getModel(): string
     {
         return AuditLog::class;
     }
 
+    /**
+     * Get a paginated list of audit logs with extensive filtering by keyword, type, action, and resource.
+     * Includes join with users table to resolve actor names.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function getPaginated(Request $request): array
     {
         $page = max(1, (int) $request->input('page', 1));
@@ -105,11 +117,23 @@ final class AuditLogRepository extends BaseRepository implements AuditLogReposit
         ];
     }
 
+    /**
+     * Format a raw action string into a human-readable headline.
+     *
+     * @param string $action
+     * @return string
+     */
     private function formatAction(string $action): string
     {
         return Str::headline(str_replace(['_', '-'], ' ', $action));
     }
 
+    /**
+     * Format the resource detail string (Resource Name + ID).
+     *
+     * @param object $row
+     * @return string
+     */
     private function formatDetail(object $row): string
     {
         $resourceType = Str::headline(str_replace(['_', '-'], ' ', (string) $row->resource_type));
@@ -118,6 +142,13 @@ final class AuditLogRepository extends BaseRepository implements AuditLogReposit
         return trim($resourceType . $resourceId);
     }
 
+    /**
+     * Resolve the UI category/type of the audit log entry for color-coding.
+     *
+     * @param string $action
+     * @param string $resourceType
+     * @return string (system|success|warning|info)
+     */
     private function resolveType(string $action, string $resourceType): string
     {
         $action = Str::lower($action . ' ' . $resourceType);
@@ -137,6 +168,12 @@ final class AuditLogRepository extends BaseRepository implements AuditLogReposit
         return 'info';
     }
 
+    /**
+     * Format a timestamp into the system's preferred display format.
+     *
+     * @param mixed $value
+     * @return string
+     */
     private function formatTime(mixed $value): string
     {
         if ($value === null || $value === '') {

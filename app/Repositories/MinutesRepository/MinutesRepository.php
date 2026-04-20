@@ -24,11 +24,22 @@ final class MinutesRepository extends BaseRepository implements MinutesRepositor
         'REJECT' => 2,
     ];
 
+    /**
+     * Get the model class name for the repository.
+     *
+     * @return string
+     */
     public function getModel(): string
     {
         return Minutes::class;
     }
 
+    /**
+     * Get a paginated list of minutes with filtering by delegation, status, and keyword search.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function getPaginated(Request $request): array
     {
         $page = max(1, (int) $request->input('page', 1));
@@ -98,6 +109,12 @@ final class MinutesRepository extends BaseRepository implements MinutesRepositor
         ];
     }
 
+    /**
+     * Get detailed information for a specific meeting minutes including all versions, comments, and approvals.
+     *
+     * @param string $id
+     * @return array|null
+     */
     public function findDetail(string $id): ?array
     {
         $minutes = DB::table('ipa_minutes as minutes')
@@ -186,6 +203,13 @@ final class MinutesRepository extends BaseRepository implements MinutesRepositor
         ];
     }
 
+    /**
+     * Create a new minutes record and initialize its first version within a transaction.
+     *
+     * @param array $attributes
+     * @param int $ownerUserId
+     * @return array|null
+     */
     public function createMinutes(array $attributes, int $ownerUserId): ?array
     {
         return DB::transaction(function () use ($attributes, $ownerUserId): ?array {
@@ -234,6 +258,14 @@ final class MinutesRepository extends BaseRepository implements MinutesRepositor
         });
     }
 
+    /**
+     * Save a new version of existing minutes and update the current version pointer.
+     *
+     * @param string $id
+     * @param array $attributes
+     * @param int $editedBy
+     * @return array|null
+     */
     public function createVersion(string $id, array $attributes, int $editedBy): ?array
     {
         return DB::transaction(function () use ($id, $attributes, $editedBy): ?array {
@@ -275,6 +307,14 @@ final class MinutesRepository extends BaseRepository implements MinutesRepositor
         });
     }
 
+    /**
+     * Post a new comment on a minutes document, optionally linked to a specific version or parent comment.
+     *
+     * @param string $id
+     * @param array $attributes
+     * @param int $commenterUserId
+     * @return array|null
+     */
     public function createComment(string $id, array $attributes, int $commenterUserId): ?array
     {
         return DB::transaction(function () use ($id, $attributes, $commenterUserId): ?array {
@@ -325,6 +365,14 @@ final class MinutesRepository extends BaseRepository implements MinutesRepositor
         });
     }
 
+    /**
+     * Process an approval or rejection for minutes, updating its status accordingly.
+     *
+     * @param string $id
+     * @param array $attributes
+     * @param int $approverUserId
+     * @return array|null
+     */
     public function approve(string $id, array $attributes, int $approverUserId): ?array
     {
         return DB::transaction(function () use ($id, $attributes, $approverUserId): ?array {
@@ -367,6 +415,12 @@ final class MinutesRepository extends BaseRepository implements MinutesRepositor
         });
     }
 
+    /**
+     * Resolve a semantic status string or numeric string into its integer constant for minutes.
+     *
+     * @param string $status
+     * @return int
+     */
     private function resolveStatus(string $status): int
     {
         $normalized = strtoupper(trim($status));
@@ -379,6 +433,12 @@ final class MinutesRepository extends BaseRepository implements MinutesRepositor
         };
     }
 
+    /**
+     * Resolve a nullable integer from mixed input.
+     *
+     * @param mixed $value
+     * @return int|null
+     */
     private function nullableInteger(mixed $value): ?int
     {
         if ($value === null || $value === '') {
@@ -388,6 +448,12 @@ final class MinutesRepository extends BaseRepository implements MinutesRepositor
         return is_numeric($value) ? (int) $value : null;
     }
 
+    /**
+     * Standardize a date value into an ISO8601 string.
+     *
+     * @param mixed $value
+     * @return string|null
+     */
     private function formatDate(mixed $value): ?string
     {
         if ($value === null || $value === '') {

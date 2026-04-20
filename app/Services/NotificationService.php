@@ -9,13 +9,33 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Class NotificationService
+ *
+ * Orchestrates business logic for system notifications, including delivery to recipients,
+ * read status management, and bulk operations.
+ *
+ * @package App\Services
+ */
 final class NotificationService
 {
+    /**
+     * NotificationService constructor.
+     *
+     * @param NotificationRepositoryInterface $notificationRepository
+     */
     public function __construct(
         private NotificationRepositoryInterface $notificationRepository,
     ) {
     }
 
+    /**
+     * Retrieve a paginated list of notifications for a specific user.
+     *
+     * @param Request $request
+     * @param int $userId
+     * @return array Standard response bundle.
+     */
     public function getAll(Request $request, int $userId): array
     {
         try {
@@ -37,6 +57,13 @@ final class NotificationService
         }
     }
 
+    /**
+     * Mark a specific notification as read for a given user.
+     *
+     * @param int $userId
+     * @param string $notificationId
+     * @return array Standard response bundle with the timestamp.
+     */
     public function read(int $userId, string $notificationId): array
     {
         try {
@@ -62,6 +89,12 @@ final class NotificationService
         }
     }
 
+    /**
+     * Mark all notifications as read for a specific user.
+     *
+     * @param int $userId
+     * @return array Standard response bundle with updated count.
+     */
     public function readAll(int $userId): array
     {
         try {
@@ -86,6 +119,12 @@ final class NotificationService
         }
     }
 
+    /**
+     * Delete all notifications that have been read by the user.
+     *
+     * @param int $userId
+     * @return array Standard response bundle with deleted count.
+     */
     public function deleteRead(int $userId): array
     {
         try {
@@ -110,6 +149,12 @@ final class NotificationService
         }
     }
 
+    /**
+     * Retrieve the count of unread notifications for a specific user.
+     *
+     * @param int $userId
+     * @return array Standard response bundle with unreadCount.
+     */
     public function getUnreadCount(int $userId): array
     {
         try {
@@ -132,6 +177,13 @@ final class NotificationService
         }
     }
 
+    /**
+     * Send a notification to one or more recipients.
+     *
+     * @param array $data Notification content (title, body, ref_table, ref_id, etc.).
+     * @param array|int $recipientIds Single user ID or array of user IDs.
+     * @return bool True if notification was created for at least one recipient.
+     */
     public function notify(array $data, array|int $recipientIds): bool
     {
         try {

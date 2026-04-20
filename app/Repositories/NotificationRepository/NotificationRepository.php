@@ -14,11 +14,24 @@ use Illuminate\Support\Str;
 
 final class NotificationRepository extends BaseRepository implements NotificationRepositoryInterface
 {
+    /**
+     * Get the model class name for the repository.
+     *
+     * @return string
+     */
     public function getModel(): string
     {
         return Notification::class;
     }
 
+    /**
+     * Get a paginated list of notifications for a user, with support for filtering by unread status.
+     * Includes normalization of notification types for frontend display.
+     *
+     * @param Request $request
+     * @param int $userId
+     * @return array
+     */
     public function getPaginatedForUser(Request $request, int $userId): array
     {
         $page = max(1, (int) $request->input('page', 1));
@@ -93,6 +106,13 @@ final class NotificationRepository extends BaseRepository implements Notificatio
         ];
     }
 
+    /**
+     * Mark a specific notification as read for a user by updating the read_at timestamp.
+     *
+     * @param int $userId
+     * @param string $notificationId
+     * @return bool
+     */
     public function markRead(int $userId, string $notificationId): bool
     {
         return DB::table('ipa_notification_recipient')
@@ -101,6 +121,12 @@ final class NotificationRepository extends BaseRepository implements Notificatio
             ->update(['read_at' => now(), 'updated_at' => now()]) > 0;
     }
 
+    /**
+     * Mark all currently unread notifications as read for a specific user.
+     *
+     * @param int $userId
+     * @return int
+     */
     public function markReadAll(int $userId): int
     {
         return DB::table('ipa_notification_recipient')
@@ -109,6 +135,12 @@ final class NotificationRepository extends BaseRepository implements Notificatio
             ->update(['read_at' => now(), 'updated_at' => now()]);
     }
 
+    /**
+     * Delete all notifications that have been marked as read for a specific user.
+     *
+     * @param int $userId
+     * @return int
+     */
     public function deleteRead(int $userId): int
     {
         return DB::table('ipa_notification_recipient')
@@ -117,6 +149,12 @@ final class NotificationRepository extends BaseRepository implements Notificatio
             ->delete();
     }
 
+    /**
+     * Count the total number of notifications that a user has not yet read.
+     *
+     * @param int $userId
+     * @return int
+     */
     public function countUnread(int $userId): int
     {
         return (int) DB::table('ipa_notification_recipient')
@@ -125,6 +163,13 @@ final class NotificationRepository extends BaseRepository implements Notificatio
             ->count();
     }
 
+    /**
+     * Create a notification record and associate it with multiple recipients in a transaction.
+     *
+     * @param array $data
+     * @param array $recipientUserIds
+     * @return int|null
+     */
     public function createWithRecipients(array $data, array $recipientUserIds): ?int
     {
         return DB::transaction(function () use ($data, $recipientUserIds) {
@@ -155,6 +200,14 @@ final class NotificationRepository extends BaseRepository implements Notificatio
         });
     }
 
+    /**
+     * Map complex notification content to a simple semantic type code for frontend categorization.
+     *
+     * @param string $typeCode
+     * @param string $title
+     * @param string $body
+     * @return string
+     */
     private function normalizeType(string $typeCode, string $title, string $body): string
     {
         $value = Str::lower(trim($typeCode . ' ' . $title . ' ' . $body));
@@ -174,6 +227,12 @@ final class NotificationRepository extends BaseRepository implements Notificatio
         return 'system';
     }
 
+    /**
+     * Standardize a date value into an ISO8601 string, with timezone adjustment if necessary.
+     *
+     * @param mixed $value
+     * @return string
+     */
     private function formatDate(mixed $value): string
     {
         if ($value === null || $value === '') {
@@ -183,6 +242,12 @@ final class NotificationRepository extends BaseRepository implements Notificatio
         return Carbon::parse((string) $value)->timezone(config('app.timezone'))->toIso8601String();
     }
 
+    /**
+     * Standardize a nullable date value into an ISO8601 string.
+     *
+     * @param mixed $value
+     * @return string|null
+     */
     private function formatNullableDate(mixed $value): ?string
     {
         if ($value === null || $value === '') {

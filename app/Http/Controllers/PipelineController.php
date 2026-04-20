@@ -10,14 +10,34 @@ use App\Services\PipelineService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Class PipelineController
+ *
+ * Manages the investment pipeline (Kanban), including project lifecycle stages,
+ * valuation tracking, and stage transitions.
+ *
+ * @package App\Http\Controllers
+ */
 final class PipelineController extends Controller
 {
+    /**
+     * PipelineController constructor.
+     *
+     * @param PipelineService $pipelineService
+     * @param PipelineValidation $pipelineValidation
+     */
     public function __construct(
         private PipelineService $pipelineService,
         private PipelineValidation $pipelineValidation,
     ) {
     }
 
+    /**
+     * List all projects in the investment pipeline with filtering.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function index(Request $request): JsonResponse
     {
         $validator = $this->pipelineValidation->indexValidation($request);
@@ -35,6 +55,12 @@ final class PipelineController extends Controller
         return $this->successResponse($result['data'], $result['message'], HttpStatus::OK, $result['data']['meta'] ?? null);
     }
 
+    /**
+     * Retrieve aggregated summary of the pipeline (Total value, counts per stage).
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function summary(Request $request): JsonResponse
     {
         $result = $this->pipelineService->getSummary();
@@ -46,6 +72,12 @@ final class PipelineController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Create a new project in the pipeline.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function store(Request $request): JsonResponse
     {
         $validator = $this->pipelineValidation->createValidation($request);
@@ -78,6 +110,12 @@ final class PipelineController extends Controller
         return $this->createdResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Retrieve detailed information for a specific pipeline project.
+     *
+     * @param string $id Project ID.
+     * @return JsonResponse
+     */
     public function show(string $id): JsonResponse
     {
         $result = $this->pipelineService->findProject($id);
@@ -89,6 +127,13 @@ final class PipelineController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Update details for an existing pipeline project.
+     *
+     * @param Request $request
+     * @param string $id Project ID.
+     * @return JsonResponse
+     */
     public function update(Request $request, string $id): JsonResponse
     {
         $validator = $this->pipelineValidation->updateValidation($request);
@@ -121,6 +166,12 @@ final class PipelineController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Soft-delete a project from the pipeline.
+     *
+     * @param string $id Project ID.
+     * @return JsonResponse
+     */
     public function destroy(string $id): JsonResponse
     {
         $result = $this->pipelineService->deleteProject($id);
@@ -132,6 +183,13 @@ final class PipelineController extends Controller
         return $this->successResponse([], $result['message']);
     }
 
+    /**
+     * Update only the stage of a project (Kanban move).
+     *
+     * @param Request $request
+     * @param string $id Project ID.
+     * @return JsonResponse
+     */
     public function patchStage(Request $request, string $id): JsonResponse
     {
         $validator = $this->pipelineValidation->stageValidation($request);

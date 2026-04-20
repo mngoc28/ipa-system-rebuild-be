@@ -27,11 +27,24 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         3 => 'CANCELLED',
     ];
 
+    /**
+     * Get the model class name for the repository.
+     *
+     * @return string
+     */
     public function getModel(): string
     {
         return Event::class;
     }
 
+    /**
+     * Get a paginated list of events with complex filtering and data scoping.
+     * Scoping ensures users only see events they are organizing, participating in, or that belong to their unit (for Managers).
+     *
+     * @param Request $request
+     * @param int|null $authUserId
+     * @return array
+     */
     public function getPaginated(Request $request, ?int $authUserId = null): array
     {
         $page = max(1, (int) $request->input('page', 1));
@@ -193,6 +206,12 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         ];
     }
 
+    /**
+     * Find a specific event by ID and return detailed information including participants and reschedule requests.
+     *
+     * @param string $id
+     * @return array|null
+     */
     public function findById(string $id): ?array
     {
         $row = DB::table('ipa_event as event')
@@ -256,6 +275,13 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         ];
     }
 
+    /**
+     * Create a new event record and its initial participants within a transaction.
+     *
+     * @param array $attributes
+     * @param int|null $requestedBy
+     * @return array|null
+     */
     public function createEvent(array $attributes, ?int $requestedBy = null): ?array
     {
         return DB::transaction(function () use ($attributes, $requestedBy): ?array {
@@ -307,6 +333,13 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         });
     }
 
+    /**
+     * Update an existing event's details within a transaction.
+     *
+     * @param string $id
+     * @param array $attributes
+     * @return array|null
+     */
     public function updateEvent(string $id, array $attributes): ?array
     {
         return DB::transaction(function () use ($id, $attributes): ?array {
@@ -360,6 +393,12 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         });
     }
 
+    /**
+     * Delete an event and all its related data (participants, reschedule requests) within a transaction.
+     *
+     * @param string $id
+     * @return bool
+     */
     public function deleteEvent(string $id): bool
     {
         return DB::transaction(function () use ($id): bool {
@@ -371,6 +410,14 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         });
     }
 
+    /**
+     * Handle a user's decision to join or decline an event.
+     *
+     * @param string $id
+     * @param int $userId
+     * @param bool $joined
+     * @return array|null
+     */
     public function joinEvent(string $id, int $userId, bool $joined): ?array
     {
         return DB::transaction(function () use ($id, $userId, $joined): ?array {
@@ -406,6 +453,14 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         });
     }
 
+    /**
+     * Create a formal reschedule request for an event.
+     *
+     * @param string $id
+     * @param array $attributes
+     * @param int $requestedBy
+     * @return array|null
+     */
     public function requestReschedule(string $id, array $attributes, int $requestedBy): ?array
     {
         return DB::transaction(function () use ($id, $attributes, $requestedBy): ?array {
@@ -437,6 +492,12 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         });
     }
 
+    /**
+     * Batch load participants for a set of event IDs.
+     *
+     * @param array $eventIds
+     * @return array Map of [eventId => [userId => participationStatus]]
+     */
     private function loadParticipants(array $eventIds): array
     {
         if ($eventIds === []) {
@@ -457,6 +518,12 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         return $grouped;
     }
 
+    /**
+     * Resolve a semantic event type string or numeric string into its integer constant.
+     *
+     * @param mixed $value
+     * @return int
+     */
     private function resolveEventType(mixed $value): int
     {
         if (is_numeric($value)) {
@@ -471,6 +538,12 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         return $resolved === false ? 1 : (int) $resolved;
     }
 
+    /**
+     * Resolve a semantic status string or numeric string into its integer constant.
+     *
+     * @param mixed $value
+     * @return int
+     */
     private function resolveStatus(mixed $value): int
     {
         if (is_numeric($value)) {
@@ -485,6 +558,12 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         return $resolved === false ? 0 : (int) $resolved;
     }
 
+    /**
+     * Resolve a nullable integer from various input types, including frontend-specific identifiers.
+     *
+     * @param mixed $value
+     * @return int|null
+     */
     private function nullableInteger(mixed $value): ?int
     {
         if ($value === null || $value === '') {
@@ -503,6 +582,13 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         return null;
     }
 
+    /**
+     * Resolve a required integer with an optional fallback, handling frontend-specific identifiers.
+     *
+     * @param mixed $value
+     * @param int|null $fallback
+     * @return int
+     */
     private function requiredInteger(mixed $value, ?int $fallback = null): int
     {
         if ($value !== null && $value !== '' && is_numeric($value)) {
@@ -517,6 +603,12 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         return $fallback ?? 1;
     }
 
+    /**
+     * Standardize a date value into an ISO8601 string.
+     *
+     * @param mixed $value
+     * @return string
+     */
     private function formatDate(mixed $value): string
     {
         return Carbon::parse((string) $value)->toIso8601String();

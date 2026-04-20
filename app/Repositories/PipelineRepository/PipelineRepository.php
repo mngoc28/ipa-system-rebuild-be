@@ -14,11 +14,23 @@ use Illuminate\Support\Str;
 
 final class PipelineRepository extends BaseRepository implements PipelineRepositoryInterface
 {
+    /**
+     * Get the model class name for the repository.
+     *
+     * @return string
+     */
     public function getModel(): string
     {
         return PipelineProject::class;
     }
 
+    /**
+     * Get a paginated list of pipeline projects with complex data scoping and grouping.
+     * Groups by project and stage to include the latest stage transition timestamp.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function getPaginated(Request $request): array
     {
         $page = max(1, (int) $request->input('page', 1));
@@ -117,6 +129,12 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         ];
     }
 
+    /**
+     * Generate a comprehensive summary of pipeline metrics.
+     * Includes stats by stage, country, sector, and recent project activity.
+     *
+     * @return array
+     */
     public function summary(): array
     {
         $projectQuery = DB::table('ipa_pipeline_project as project')
@@ -258,6 +276,13 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         ];
     }
 
+    /**
+     * Create a new pipeline project record within a transaction.
+     *
+     * @param array $attributes
+     * @param int|null $ownerUserId
+     * @return array|null
+     */
     public function createProject(array $attributes, ?int $ownerUserId = null): ?array
     {
         return DB::transaction(function () use ($attributes, $ownerUserId): ?array {
@@ -288,6 +313,14 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         });
     }
 
+    /**
+     * Update an existing pipeline project's details within a transaction.
+     * Auto-triggers stage history recording if the stage changes.
+     *
+     * @param string $projectId
+     * @param array $attributes
+     * @return array|null
+     */
     public function updateProject(string $projectId, array $attributes): ?array
     {
         return DB::transaction(function () use ($projectId, $attributes): ?array {
@@ -326,6 +359,12 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         });
     }
 
+    /**
+     * Delete a pipeline project and its associated stage history within a transaction.
+     *
+     * @param string $projectId
+     * @return bool
+     */
     public function deleteProject(string $projectId): bool
     {
         return DB::transaction(function () use ($projectId): bool {
@@ -335,6 +374,15 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         });
     }
 
+    /**
+     * Update only the stage of a project and record this change in history.
+     *
+     * @param string $projectId
+     * @param string $newStageIdentifier
+     * @param string|null $reason
+     * @param int|null $changedBy
+     * @return array|null
+     */
     public function patchStage(string $projectId, string $newStageIdentifier, ?string $reason = null, ?int $changedBy = null): ?array
     {
         return DB::transaction(function () use ($projectId, $newStageIdentifier, $reason, $changedBy): ?array {
@@ -373,6 +421,12 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         });
     }
 
+    /**
+     * Find a specific pipeline project by ID with all relevant joins and groupings.
+     *
+     * @param string $projectId
+     * @return array|null
+     */
     public function findProject(string $projectId): ?array
     {
         $row = DB::table('ipa_pipeline_project as project')
@@ -428,6 +482,12 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         return $this->normalizeProject($row);
     }
 
+    /**
+     * Standardize a pipeline project object into a response-ready array.
+     *
+     * @param object $row
+     * @return array
+     */
     private function normalizeProject(object $row): array
     {
         return [
@@ -450,6 +510,12 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         ];
     }
 
+    /**
+     * Resolve a semantic stage identifier (code or numeric string) to its integer ID.
+     *
+     * @param string $identifier
+     * @return int|null
+     */
     private function resolveStageId(string $identifier): ?int
     {
         $identifier = trim($identifier);
@@ -477,6 +543,11 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         return $this->fallbackStageId();
     }
 
+    /**
+     * Provide a fallback stage ID if resolution fails.
+     *
+     * @return int|null
+     */
     private function fallbackStageId(): ?int
     {
         $stageId = DB::table('ipa_md_pipeline_stage')->value('id');
@@ -484,6 +555,13 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         return $stageId !== null ? (int) $stageId : null;
     }
 
+    /**
+     * Resolve a required foreign ID from input, ensuring it exists in the target table.
+     *
+     * @param string $table
+     * @param mixed $value
+     * @return int
+     */
     private function resolveForeignId(string $table, mixed $value): int
     {
         if ($value !== null && $value !== '' && is_numeric($value)) {
@@ -493,6 +571,13 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         return (int) (DB::table($table)->value('id') ?? 1);
     }
 
+    /**
+     * Resolve a nullable foreign ID from input.
+     *
+     * @param string $table
+     * @param mixed $value
+     * @return int|null
+     */
     private function resolveNullableForeignId(string $table, mixed $value): ?int
     {
         if ($value === null || $value === '') {
@@ -506,11 +591,22 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         return (int) (DB::table($table)->value('id') ?? 1);
     }
 
+    /**
+     * Generate a unique project code with a 'PIPE-' prefix.
+     *
+     * @return string
+     */
     private function generateProjectCode(): string
     {
         return 'PIPE-' . Str::upper(Str::random(8));
     }
 
+    /**
+     * Standardize a nullable date value into an ISO8601 string.
+     *
+     * @param mixed $value
+     * @return string|null
+     */
     private function formatNullableDate(mixed $value): ?string
     {
         if ($value === null || $value === '') {

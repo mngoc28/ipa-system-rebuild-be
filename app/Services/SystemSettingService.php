@@ -9,13 +9,32 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Class SystemSettingService
+ *
+ * Orchestrates business logic for system-wide configurations, including bulk updates
+ * and external service integration testing (e.g., Zalo).
+ *
+ * @package App\Services
+ */
 final class SystemSettingService
 {
+    /**
+     * SystemSettingService constructor.
+     *
+     * @param SystemSettingRepositoryInterface $systemSettingRepository
+     */
     public function __construct(
         private SystemSettingRepositoryInterface $systemSettingRepository,
     ) {
     }
 
+    /**
+     * Retrieve system settings, optionally filtered by group identifiers.
+     *
+     * @param Request $request Contains optional 'group' CSV parameter.
+     * @return array Standard response bundle.
+     */
     public function getAll(Request $request): array
     {
         try {
@@ -41,6 +60,13 @@ final class SystemSettingService
         }
     }
 
+    /**
+     * Bulk update multiple system setting items.
+     *
+     * @param array $items Key-value pairs of settings to update.
+     * @param int|null $updatedBy Identifier of the user performing the update.
+     * @return array Standard response bundle with updatedCount.
+     */
     public function update(array $items, ?int $updatedBy = null): array
     {
         try {
@@ -66,6 +92,13 @@ final class SystemSettingService
         }
     }
 
+    /**
+     * Test the integration of a specific third-party provider (e.g., 'zalo').
+     * Verifies that necessary API credentials are configured and reachable.
+     *
+     * @param string $provider The provider identifier.
+     * @return array Standard response bundle with connectivity status.
+     */
     public function testIntegration(string $provider): array
     {
         try {

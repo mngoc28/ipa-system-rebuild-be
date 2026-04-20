@@ -14,10 +14,21 @@ use Illuminate\Support\Facades\DB;
 
 final class ApprovalRepository implements ApprovalRepositoryInterface
 {
+    /**
+     * ApprovalRepository constructor.
+     *
+     * @param ApprovalRequest $model
+     */
     public function __construct(private ApprovalRequest $model)
     {
     }
 
+    /**
+     * Get a paginated list of approval requests with filtering by status, type, and keyword.
+     *
+     * @param Request $request
+     * @return LengthAwarePaginator
+     */
     public function getPaginated(Request $request): LengthAwarePaginator
     {
         $query = $this->model->newQuery()->with([
@@ -64,6 +75,12 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
         return $paginator;
     }
 
+    /**
+     * Get detailed information for a specific approval request, including steps and history.
+     *
+     * @param int $id
+     * @return array|null
+     */
     public function getById(int $id): ?array
     {
         $approvalRequest = $this->model->newQuery()
@@ -84,6 +101,15 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
         ];
     }
 
+    /**
+     * Process a decision for an approval request within a transaction.
+     * Updates the status, logs history, and triggers notifications.
+     *
+     * @param int $id
+     * @param array $data
+     * @param int $userId
+     * @return array|null
+     */
     public function decide(int $id, array $data, int $userId): ?array
     {
         return DB::transaction(function () use ($id, $data, $userId): ?array {
@@ -170,6 +196,12 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
         });
     }
 
+    /**
+     * Transform an approval request model into a list item array.
+     *
+     * @param ApprovalRequest $approvalRequest
+     * @return array
+     */
     private function transformListItem(ApprovalRequest $approvalRequest): array
     {
         $currentStep = $approvalRequest->steps->firstWhere('step_order', $approvalRequest->current_step) ?? $approvalRequest->steps->first();
@@ -186,6 +218,12 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
         ];
     }
 
+    /**
+     * Transform an approval request model into a detailed response array.
+     *
+     * @param ApprovalRequest $approvalRequest
+     * @return array
+     */
     private function transformDetailRequest(ApprovalRequest $approvalRequest): array
     {
         return array_merge($this->transformListItem($approvalRequest), [
@@ -196,6 +234,12 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
         ]);
     }
 
+    /**
+     * Transform a collection of approval steps into a standardized array.
+     *
+     * @param Collection $steps
+     * @return array
+     */
     private function transformSteps(Collection $steps): array
     {
         return $steps->map(static function (ApprovalStep $step): array {
@@ -214,6 +258,12 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
         })->all();
     }
 
+    /**
+     * Transform a collection of approval history logs into a standardized array.
+     *
+     * @param Collection<int, ApprovalHistory> $history
+     * @return array
+     */
     private function transformHistory(Collection $history): array
     {
         return $history->map(static function (ApprovalHistory $item): array {
@@ -232,6 +282,12 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
         })->all();
     }
 
+    /**
+     * Resolve a human-readable title for an approval request.
+     *
+     * @param ApprovalRequest $approvalRequest
+     * @return string
+     */
     private function resolveTitle(ApprovalRequest $approvalRequest): string
     {
         $label = trim($approvalRequest->request_type . ' ' . $approvalRequest->ref_table);
@@ -243,6 +299,12 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
         return $label . ' #' . $approvalRequest->ref_id;
     }
 
+    /**
+     * Map a numeric status to its human-readable text representation.
+     *
+     * @param int $status
+     * @return string
+     */
     private static function statusToText(int $status): string
     {
         return match ($status) {

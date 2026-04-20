@@ -10,14 +10,34 @@ use App\Services\TeamService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Class TeamController
+ *
+ * Manages organizational teams and units, including team hierarchies,
+ * member assignments, and unit-level data retrieval.
+ *
+ * @package App\Http\Controllers
+ */
 final class TeamController extends Controller
 {
+    /**
+     * TeamController constructor.
+     *
+     * @param TeamService $teamService
+     * @param TeamValidation $teamValidation
+     */
     public function __construct(
         private TeamService $teamService,
         private TeamValidation $teamValidation,
     ) {
     }
 
+    /**
+     * List all teams and units for the dashboard overview.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function index(Request $request): JsonResponse
     {
         $validator = $this->teamValidation->indexValidation($request);
@@ -35,6 +55,12 @@ final class TeamController extends Controller
         return $this->successResponse($result['data'], $result['message'], HttpStatus::OK, $result['data']['meta'] ?? null);
     }
 
+    /**
+     * Retrieve a flat list of organizational units (Departments, Divisions).
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function units(Request $request): JsonResponse
     {
         $result = $this->teamService->getUnits($request);
@@ -46,6 +72,12 @@ final class TeamController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Assign a new member to a team or update their assignment.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function storeMember(Request $request): JsonResponse
     {
         $validator = $this->teamValidation->storeValidation($request);

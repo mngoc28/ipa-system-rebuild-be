@@ -9,6 +9,28 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Class MasterData
+ *
+ * Represents a generic master data item used for drop-downs and categorizations.
+ * Supports a hierarchical structure via codes.
+ *
+ * @package App\Models
+ *
+ * @property string $id Unique string identifier (slug/code).
+ * @property string $group_code Category/Group of this item.
+ * @property string $item_code Specific code for this item.
+ * @property string $name_vi Vietnamese label.
+ * @property string|null $name_en English label.
+ * @property string|null $description
+ * @property int $sort_order
+ * @property bool $is_active
+ * @property int|null $created_by
+ * @property int|null $updated_by
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ */
 final class MasterData extends Model
 {
     use HasFactory;

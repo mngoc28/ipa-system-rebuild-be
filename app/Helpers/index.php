@@ -1,7 +1,20 @@
 <?php
 
+/**
+ * Helper functions for the application.
+ *
+ * @package App\Helpers
+ */
+
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Crypt;
+
+/**
+ * Calculate the number of minutes past the specific end time.
+ *
+ * @param mixed $endTime Carbon instance or parsable date string.
+ * @return float
+ */
 
 if (!function_exists("get_over_time")) {
     function get_over_time($endTime): float
@@ -16,6 +29,13 @@ if (!function_exists("get_over_time")) {
     }
 }
 
+/**
+ * Encrypt a string payload using AES-256-CBC.
+ *
+ * @param string $payload
+ * @param string $encryptMethod
+ * @return string Base64 encoded encrypted string.
+ */
 if (!function_exists("cryptEncrypt")) {
     function cryptEncrypt(
         string $payload,
@@ -31,6 +51,13 @@ if (!function_exists("cryptEncrypt")) {
     }
 }
 
+/**
+ * Decrypt a string payload using AES-256-CBC.
+ *
+ * @param string $payload Base64 encoded encrypted string.
+ * @param string $encryptMethod
+ * @return string Decrypted string.
+ */
 if (!function_exists("cryptDecrypt")) {
     function cryptDecrypt(
         string $payload,

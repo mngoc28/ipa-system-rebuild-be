@@ -13,14 +13,35 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
+/**
+ * Class ProfileController
+ *
+ * Manages the authenticated user's personal profile, including
+ * avatar uploads to Cloudinary and profile information updates.
+ *
+ * @package App\Http\Controllers
+ */
 final class ProfileController extends Controller
 {
+    /**
+     * ProfileController constructor.
+     *
+     * @param ProfileValidation $profileValidation
+     * @param AdminUserService $adminUserService
+     */
     public function __construct(
         private ProfileValidation $profileValidation,
         private AdminUserService $adminUserService
     ) {
     }
 
+    /**
+     * Upload and update the user's avatar.
+     * Uses Cloudinary for secure image storage.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function updateAvatar(Request $request): JsonResponse
     {
         $validator = $this->profileValidation->updateAvatarValidation($request);
@@ -58,6 +79,12 @@ final class ProfileController extends Controller
         return $this->successResponse($result, __('profile.messages.avatar_update_success'));
     }
 
+    /**
+     * Update the user's profile information (name, phone, etc.).
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function update(Request $request): JsonResponse
     {
         /** @var AdminUser $user */
