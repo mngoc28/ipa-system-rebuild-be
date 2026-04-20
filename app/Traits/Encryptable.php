@@ -2,6 +2,14 @@
 
 namespace App\Traits;
 
+/**
+ * Trait Encryptable
+ *
+ * Automatically encrypts and decrypts specific Eloquent attributes
+ * defined in the $encryptable property of the model.
+ *
+ * @package App\Traits
+ */
 trait Encryptable
 {
     public function getAttribute($key)

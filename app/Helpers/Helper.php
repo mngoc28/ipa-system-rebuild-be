@@ -9,6 +9,14 @@ use Picqer\Barcode\BarcodeGeneratorPNG;
 use Picqer\Barcode\Types\TypeCode128;
 use Picqer\Barcode\PngRenderer;
 
+/**
+ * Class Helper
+ *
+ * General-purpose helper class providing utilities for string manipulation,
+ * date calculations, encryption/decryption, and barcode generation.
+ *
+ * @package App\Helpers
+ */
 class Helper
 {
     /**
@@ -37,6 +45,13 @@ class Helper
         );
     }
 
+    /**
+     * Add minutes to a specific date.
+     *
+     * @param string|DateTime $date
+     * @param int $minutes
+     * @return Carbon
+     */
     public static function getDataAddMinutes($date, int $minutes)
     {
         $dateAdd = Carbon::parse($date);
@@ -44,6 +59,13 @@ class Helper
         return $dateAdd->addMinutes($minutes);
     }
 
+    /**
+     * Subtract minutes from a specific date.
+     *
+     * @param string|DateTime $date
+     * @param int $minutes
+     * @return Carbon
+     */
     public static function getDataSubMinutes($date, int $minutes)
     {
         $dateSub = Carbon::parse($date);
@@ -51,6 +73,12 @@ class Helper
         return $dateSub->subMinutes($minutes);
     }
 
+    /**
+     * Generate an array of years from the current year back to a specified year.
+     *
+     * @param int $year Start year.
+     * @return array<int>
+     */
     public static function listYearsToCurrentYear($year)
     {
         $yearArr = [];
@@ -63,6 +91,13 @@ class Helper
         return $yearArr;
     }
 
+    /**
+     * Encrypt a string payload using AES-256-CBC.
+     *
+     * @param string $payload
+     * @param string $encryptMethod
+     * @return string Base64 encoded encrypted string.
+     */
     public static function cryptEncrypt(
         string $payload,
         string $encryptMethod = "AES-256-CBC"
@@ -75,6 +110,13 @@ class Helper
         );
     }
 
+    /**
+     * Decrypt a string payload using AES-256-CBC.
+     *
+     * @param string $payload Base64 encoded encrypted string.
+     * @param string $encryptMethod
+     * @return string Decrypted string.
+     */
     public static function cryptDecrypt(
         string $payload,
         string $encryptMethod = "AES-256-CBC"
@@ -91,6 +133,16 @@ class Helper
         );
     }
 
+    /**
+     * Calculate the great-circle distance between two points (Haversine formula).
+     *
+     * @param float $latitudeFrom
+     * @param float $longitudeFrom
+     * @param float $latitudeTo
+     * @param float $longitudeTo
+     * @param int $earthRadius In meters.
+     * @return float Distance in meters.
+     */
     public static function haversineGreatCircleDistance(
         $latitudeFrom,
         $longitudeFrom,
@@ -117,6 +169,12 @@ class Helper
         return $angle * $earthRadius;
     }
 
+    /**
+     * Generate a random password string.
+     *
+     * @param int|null $length
+     * @return string
+     */
     public static function randomPassword($length = null)
     {
         if (is_null($length)) {
@@ -138,6 +196,11 @@ class Helper
         return str_shuffle($password);
     }
 
+    /**
+     * Generate a random barcode identifier based on UUID.
+     *
+     * @return string
+     */
     public static function generateBarcode()
     {
         $uuid = Str::uuid()->toString();

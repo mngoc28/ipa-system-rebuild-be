@@ -8,13 +8,31 @@ use App\Repositories\ReportRepository\ReportRepositoryInterface;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Class ReportService
+ *
+ * Orchestrates business logic for system reports, including definition lookups,
+ * summary aggregation, and report execution runs.
+ *
+ * @package App\Services
+ */
 final class ReportService
 {
+    /**
+     * ReportService constructor.
+     *
+     * @param ReportRepositoryInterface $reportRepository
+     */
     public function __construct(
         private ReportRepositoryInterface $reportRepository,
     ) {
     }
 
+    /**
+     * Retrieve all available report definitions.
+     *
+     * @return array Standard response bundle.
+     */
     public function getDefinitions(): array
     {
         try {
@@ -36,6 +54,11 @@ final class ReportService
         }
     }
 
+    /**
+     * Get a summary of metrics and KPIs (dashboard overview).
+     *
+     * @return array Standard response bundle.
+     */
     public function getSummary(): array
     {
         try {
@@ -57,6 +80,13 @@ final class ReportService
         }
     }
 
+    /**
+     * Execute a new report run based on provided definitions and filters.
+     *
+     * @param array $attributes Report parameters (definition_id, filters, etc.).
+     * @param int|null $runBy Identifier of the user initiating the report.
+     * @return array Standard response bundle with the created run results.
+     */
     public function createRun(array $attributes, ?int $runBy = null): array
     {
         try {
@@ -88,6 +118,12 @@ final class ReportService
         }
     }
 
+    /**
+     * Retrieve the results of a specific report run.
+     *
+     * @param string $runId
+     * @return array Standard response bundle with run data.
+     */
     public function getRun(string $runId): array
     {
         try {

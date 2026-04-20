@@ -7,10 +7,12 @@ use App\Enums\HttpStatus;
 trait ApiResponser
 {
     /**
-     * Summary of successResponse
-     * @param mixed $data
-     * @param mixed $message
-     * @param mixed $code
+     * Standard success response (HTTP 200 OK by default).
+     *
+     * @param mixed $data Payload data.
+     * @param string|null $message Optional success message.
+     * @param HttpStatus $code HTTP status code.
+     * @param mixed $meta Optional pagination or metadata.
      * @return \Illuminate\Http\JsonResponse
      */
     protected function successResponse(
@@ -34,10 +36,12 @@ trait ApiResponser
     }
 
     /**
-     * Summary of createdResponse
-     * @param mixed $data
-     * @param mixed $message
-     * @param mixed $code
+     * Created response (HTTP 201 Created by default).
+     *
+     * @param mixed $data Payload data.
+     * @param string|null $message Optional success message.
+     * @param HttpStatus $code HTTP status code.
+     * @param mixed $meta Optional metadata.
      * @return \Illuminate\Http\JsonResponse
      */
     protected function createdResponse(
@@ -61,11 +65,12 @@ trait ApiResponser
     }
 
     /**
-     * Summary of errorResponse
-     * @param mixed $message
-     * @param mixed $err_code
-     * @param HttpStatus $code
-     * @param mixed $data
+     * Standard error response (HTTP 400 Bad Request by default).
+     *
+     * @param string|null $message Error message.
+     * @param string|null $err_code Internal error code.
+     * @param HttpStatus $code HTTP status code.
+     * @param mixed $data Optional error details.
      * @return \Illuminate\Http\JsonResponse
      */
     protected function errorResponse(
@@ -89,11 +94,12 @@ trait ApiResponser
     }
 
     /**
-     * Summary of validateError
-     * @param mixed $message
-     * @param mixed $err_code
-     * @param HttpStatus $code
-     * @param mixed $data
+     * Validation error response (HTTP 422 Unprocessable Entity).
+     *
+     * @param mixed $message Validation errors.
+     * @param string|null $err_code Internal error code.
+     * @param HttpStatus $code HTTP status code.
+     * @param mixed $data Optional error details.
      * @return \Illuminate\Http\JsonResponse
      */
     // 422 validation response
@@ -119,11 +125,12 @@ trait ApiResponser
     }
 
     /**
-     * Summary of forbiddenResponse
-     * @param mixed $message
-     * @param mixed $err_code
-     * @param HttpStatus $code
-     * @param mixed $data
+     * Forbidden response (HTTP 403 Forbidden).
+     *
+     * @param string|null $message Forbidden message.
+     * @param string|null $err_code Internal error code.
+     * @param HttpStatus $code HTTP status code.
+     * @param mixed $data Optional details.
      * @return \Illuminate\Http\JsonResponse
      */
     // 403 forbidden response

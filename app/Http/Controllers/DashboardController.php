@@ -10,13 +10,32 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Class DashboardController
+ *
+ * Provides aggregated statistics and summary data for various system modules,
+ * tailored to the user's role and scope (Staff, Manager, Director, Admin).
+ *
+ * @package App\Http\Controllers
+ */
 final class DashboardController extends Controller
 {
+    /**
+     * DashboardController constructor.
+     *
+     * @param TaskService $taskService
+     */
     public function __construct(
         private TaskService $taskService,
     ) {
     }
 
+    /**
+     * Retrieve a summary of dashboard metrics based on the specified scope.
+     *
+     * @param Request $request Requires 'scope' parameter (staff|manager|director|admin).
+     * @return JsonResponse
+     */
     public function summary(Request $request): JsonResponse
     {
         $scope = strtolower(trim((string) $request->input('scope', 'director')));
@@ -32,6 +51,12 @@ final class DashboardController extends Controller
         );
     }
 
+    /**
+     * Retrieve tasks relevant to the dashboard view.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function tasks(Request $request): JsonResponse
     {
         $result = $this->taskService->getAll($request);
@@ -43,6 +68,13 @@ final class DashboardController extends Controller
         return $this->successResponse($result['data'], $result['message'], HttpStatus::OK, $result['data']['meta'] ?? null);
     }
 
+    /**
+     * Build the summary data response based on the user's role and scope.
+     * Aggregates delegation counts, task statuses, event schedules, and pipeline values.
+     *
+     * @param string $scope The requested data scope.
+     * @return array The compiled summary data bundle.
+     */
     private function buildSummary(string $scope): array
     {
         $user = auth()->user();

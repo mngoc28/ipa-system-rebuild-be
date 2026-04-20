@@ -16,8 +16,21 @@ use Illuminate\Support\Str;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
+/**
+ * Class AuthController
+ *
+ * Handles user authentication via JWT, sessions, and refresh tokens.
+ *
+ * @package App\Http\Controllers\Auth
+ */
 final class AuthController extends Controller
 {
+    /**
+     * Handle a login request to the application.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function login(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -67,6 +80,12 @@ final class AuthController extends Controller
         ], __('auth.login_success'));
     }
 
+    /**
+     * Get the authenticated User's profile.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function me(Request $request): JsonResponse
     {
         return $this->successResponse(
@@ -75,6 +94,11 @@ final class AuthController extends Controller
         );
     }
 
+    /**
+     * Log the user out (Invalidate the token).
+     *
+     * @return JsonResponse
+     */
     public function logout(): JsonResponse
     {
         try {
@@ -100,6 +124,12 @@ final class AuthController extends Controller
         }
     }
 
+    /**
+     * Refresh the user's JWT access token using a refresh token.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function refresh(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [

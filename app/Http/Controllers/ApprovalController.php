@@ -11,14 +11,34 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Class ApprovalController
+ *
+ * Manages the approval request lifecycle, including listing pending requests,
+ * viewing request details, and recording approval/rejection decisions.
+ *
+ * @package App\Http\Controllers
+ */
 final class ApprovalController extends Controller
 {
+    /**
+     * ApprovalController constructor.
+     *
+     * @param ApprovalService $approvalService
+     * @param ApprovalValidation $approvalValidation
+     */
     public function __construct(
         private ApprovalService $approvalService,
         private ApprovalValidation $approvalValidation,
     ) {
     }
 
+    /**
+     * List approval requests with filtering and pagination.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function index(Request $request): JsonResponse
     {
         $validator = $this->approvalValidation->indexValidation($request);
@@ -39,6 +59,12 @@ final class ApprovalController extends Controller
         return $this->successResponse(['items' => $result->items()], __('approvals.messages.fetch_success'), HttpStatus::OK, $meta);
     }
 
+    /**
+     * Get a summary of pending approval requests.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function summary(Request $request): JsonResponse
     {
         // For simplicity, we just count pending (status 0/PENDING)
@@ -49,6 +75,12 @@ final class ApprovalController extends Controller
         ], 'Approval summary fetched successfully');
     }
 
+    /**
+     * Get the details of a specific approval request.
+     *
+     * @param string $id
+     * @return JsonResponse
+     */
     public function show(string $id): JsonResponse
     {
         $result = $this->approvalService->getApproval((int) $id);
@@ -60,6 +92,13 @@ final class ApprovalController extends Controller
         return $this->successResponse($result, __('approvals.messages.fetch_success'));
     }
 
+    /**
+     * Record a decision (approve/reject) for an approval request.
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
     public function decision(Request $request, string $id): JsonResponse
     {
         $validator = $this->approvalValidation->decisionValidation($request);
@@ -77,6 +116,13 @@ final class ApprovalController extends Controller
         return $this->successResponse($result, __('approvals.messages.decision_success'));
     }
 
+    /**
+     * Resolves the user identity for the current request.
+     * Supports authenticated users and mock overrides for development/testing.
+     *
+     * @param Request $request
+     * @return int User ID.
+     */
     private function resolveUserId(Request $request): int
     {
         $authenticatedUserId = (int) ($request->user()?->id ?? 0);

@@ -11,13 +11,32 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Class PartnerService
+ *
+ * Handles business logic for external partner management, including data normalization,
+ * sector/country label resolution, and relationship tracking.
+ *
+ * @package App\Services
+ */
 final class PartnerService
 {
+    /**
+     * PartnerService constructor.
+     *
+     * @param PartnerRepositoryInterface $partnerRepository
+     */
     public function __construct(
         private PartnerRepositoryInterface $partnerRepository,
     ) {
     }
 
+    /**
+     * Retrieve a paginated list of partners with support for searching and filtering.
+     *
+     * @param Request $request
+     * @return array Standard response bundle.
+     */
     public function getAll(Request $request): array
     {
         try {
@@ -39,6 +58,12 @@ final class PartnerService
         }
     }
 
+    /**
+     * Retrieve lookup options for countries and sectors used in partner forms.
+     * Includes normalization for seeding data.
+     *
+     * @return array Standard response bundle with options.
+     */
     public function getOptions(): array
     {
         try {
@@ -85,9 +110,17 @@ final class PartnerService
         }
     }
 
+    /**
+     * Get comprehensive details for a specific partner, including contacts and interactions.
+     * Performs on-the-fly normalization for human-readable labels.
+     *
+     * @param int $id
+     * @return array Standard response bundle.
+     */
     public function getById(int $id): array
     {
         try {
+            /** @var Partner|null $partner */
             $partner = $this->partnerRepository->find($id);
 
             if (!$partner) {
@@ -110,7 +143,7 @@ final class PartnerService
                 ->select(['name_vi'])
                 ->first();
 
-            $contacts = $partner->contacts->map(static fn ($contact): array => [
+            $contacts = $partner->contacts->map(static fn (\App\Models\PartnerContact $contact): array => [
                 'id' => (string) $contact->id,
                 'fullName' => (string) $contact->full_name,
                 'title' => $contact->title !== null ? (string) $contact->title : null,
@@ -119,7 +152,7 @@ final class PartnerService
                 'isPrimary' => (bool) $contact->is_primary,
             ])->all();
 
-            $recentInteractions = $partner->interactions->take(5)->map(static fn ($interaction): array => [
+            $recentInteractions = $partner->interactions->take(5)->map(static fn (\App\Models\PartnerInteraction $interaction): array => [
                 'id' => (string) $interaction->id,
                 'interactionType' => (int) $interaction->interaction_type,
                 'interactionAt' => optional($interaction->interaction_at)?->toDateTimeString(),
@@ -160,6 +193,12 @@ final class PartnerService
         }
     }
 
+    /**
+     * Create a new partner record.
+     *
+     * @param array $data Partner attributes.
+     * @return array Standard response bundle.
+     */
     public function create(array $data): array
     {
         try {
@@ -184,6 +223,13 @@ final class PartnerService
         }
     }
 
+    /**
+     * Update an existing partner's information.
+     *
+     * @param int $id
+     * @param array $data New attributes for the partner.
+     * @return array Standard response bundle.
+     */
     public function update(int $id, array $data): array
     {
         try {
@@ -209,6 +255,12 @@ final class PartnerService
         }
     }
 
+    /**
+     * Permanently remove a partner record.
+     *
+     * @param int $id
+     * @return array Standard response bundle.
+     */
     public function delete(int $id): array
     {
         try {
@@ -233,6 +285,14 @@ final class PartnerService
         }
     }
 
+    /**
+     * Resolve a human-readable country label from Vietnamese and English names.
+     * Falls back to hardcoded mappings if seed data format is detected.
+     *
+     * @param string $nameVi
+     * @param string $nameEn
+     * @return string
+     */
     private function resolveCountryLabel(string $nameVi, string $nameEn): string
     {
         $label = trim($nameVi !== '' ? $nameVi : $nameEn);
@@ -253,6 +313,14 @@ final class PartnerService
         return $label;
     }
 
+    /**
+     * Resolve a human-readable sector label.
+     * Falls back to hardcoded mappings if seed data format is detected.
+     *
+     * @param string $nameVi
+     * @param string $sectorId
+     * @return string
+     */
     private function resolveSectorLabel(string $nameVi, string $sectorId): string
     {
         $label = trim($nameVi);

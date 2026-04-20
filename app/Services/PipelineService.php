@@ -9,13 +9,32 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Class PipelineService
+ *
+ * Orchestrates business logic for investment pipeline projects, including lifecycle transitions,
+ * summary aggregation, and project details management.
+ *
+ * @package App\Services
+ */
 final class PipelineService
 {
+    /**
+     * PipelineService constructor.
+     *
+     * @param PipelineRepositoryInterface $pipelineRepository
+     */
     public function __construct(
         private PipelineRepositoryInterface $pipelineRepository,
     ) {
     }
 
+    /**
+     * Retrieve a paginated list of investment projects with filtering support.
+     *
+     * @param Request $request
+     * @return array Standard response bundle.
+     */
     public function getProjects(Request $request): array
     {
         try {
@@ -37,6 +56,11 @@ final class PipelineService
         }
     }
 
+    /**
+     * Get a summary of projects across different stages (Kanban board overview).
+     *
+     * @return array Standard response bundle.
+     */
     public function getSummary(): array
     {
         try {
@@ -58,6 +82,13 @@ final class PipelineService
         }
     }
 
+    /**
+     * Create a new investment pipeline project.
+     *
+     * @param array $attributes Project details.
+     * @param int|null $ownerUserId Identifier of the project owner.
+     * @return array Standard response bundle.
+     */
     public function createProject(array $attributes, ?int $ownerUserId = null): array
     {
         try {
@@ -89,6 +120,15 @@ final class PipelineService
         }
     }
 
+    /**
+     * Transition a project to a new stage in the pipeline.
+     *
+     * @param string $projectId
+     * @param string $newStageIdentifier
+     * @param string|null $reason Optional reason for the stage change.
+     * @param int|null $changedBy Identifier of the user making the change.
+     * @return array Standard response bundle.
+     */
     public function patchStage(string $projectId, string $newStageIdentifier, ?string $reason = null, ?int $changedBy = null): array
     {
         try {
@@ -121,6 +161,13 @@ final class PipelineService
         }
     }
 
+    /**
+     * Update an existing project's metadata.
+     *
+     * @param string $projectId
+     * @param array $attributes New data to apply.
+     * @return array Standard response bundle.
+     */
     public function updateProject(string $projectId, array $attributes): array
     {
         try {
@@ -153,6 +200,12 @@ final class PipelineService
         }
     }
 
+    /**
+     * Permanently remove a project and its history from the system.
+     *
+     * @param string $projectId
+     * @return array Standard response bundle.
+     */
     public function deleteProject(string $projectId): array
     {
         try {
@@ -182,6 +235,12 @@ final class PipelineService
         }
     }
 
+    /**
+     * Find specific project details by identifier.
+     *
+     * @param string $projectId
+     * @return array Standard response bundle.
+     */
     public function findProject(string $projectId): array
     {
         try {

@@ -9,13 +9,31 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Class AdminUserService
+ *
+ * Orchestrates business logic for administrative user management, wrapping repository calls with error handling and logging.
+ *
+ * @package App\Services
+ */
 final class AdminUserService
 {
+    /**
+     * AdminUserService constructor.
+     *
+     * @param AdminUserRepositoryInterface $adminUserRepository
+     */
     public function __construct(
         private AdminUserRepositoryInterface $adminUserRepository,
     ) {
     }
 
+    /**
+     * Get a paginated list of all administrative users.
+     *
+     * @param Request $request
+     * @return array Response structure with success status, data, and translated message.
+     */
     public function getAll(Request $request): array
     {
         try {
@@ -37,6 +55,12 @@ final class AdminUserService
         }
     }
 
+    /**
+     * Retrieve a specific administrative user by their identifier.
+     *
+     * @param string $userId
+     * @return array|null Normalized user data or null on failure.
+     */
     public function getById(string $userId): ?array
     {
         try {
@@ -51,6 +75,12 @@ final class AdminUserService
         }
     }
 
+    /**
+     * Create a new administrative user record.
+     *
+     * @param array $attributes User details to persist.
+     * @return array|null Created user data or null on failure.
+     */
     public function create(array $attributes): ?array
     {
         try {
@@ -64,6 +94,13 @@ final class AdminUserService
         }
     }
 
+    /**
+     * Update an existing administrative user's information.
+     *
+     * @param string $userId Identifier of the user to update.
+     * @param array $attributes New attributes to apply.
+     * @return array|null Updated user data or null on failure.
+     */
     public function update(string $userId, array $attributes): ?array
     {
         try {
@@ -78,6 +115,13 @@ final class AdminUserService
         }
     }
 
+    /**
+     * Toggle the locked status of an administrative user.
+     *
+     * @param string $userId
+     * @param bool $locked Whether to lock (true) or unlock (false) the user.
+     * @return array|null Updated user data or null on failure.
+     */
     public function lock(string $userId, bool $locked): ?array
     {
         try {
@@ -93,6 +137,12 @@ final class AdminUserService
         }
     }
 
+    /**
+     * Permanently delete an administrative user.
+     *
+     * @param string $userId
+     * @return bool True if deleted successfully, false otherwise.
+     */
     public function delete(string $userId): bool
     {
         try {
@@ -106,6 +156,13 @@ final class AdminUserService
             return false;
         }
     }
+    /**
+     * Update the avatar path for a specific user.
+     *
+     * @param string $userId
+     * @param string $path Local or remote path to the avatar image.
+     * @return array|null Updated user data or null on failure.
+     */
     public function updateAvatar(string $userId, string $path): ?array
     {
         try {

@@ -6,6 +6,14 @@ use App\Services\StationService;
 use Exception;
 use Illuminate\Support\Facades\Config;
 
+/**
+ * Trait GmoTrait
+ *
+ * Handles configuration and setup for the GMO payment gateway
+ * based on specific station/unit credentials.
+ *
+ * @package App\Traits
+ */
 trait GmoTrait
 {
     public function settingConfig($id)

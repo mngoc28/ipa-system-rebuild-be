@@ -10,14 +10,35 @@ use App\Services\MasterDataService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Class MasterDataController
+ *
+ * Orchestrates CRUD operations for dynamic master data domains (sectors, countries, etc.).
+ * Uses a domain-based routing pattern to handle multiple metadata types.
+ *
+ * @package App\Http\Controllers
+ */
 final class MasterDataController extends Controller
 {
+    /**
+     * MasterDataController constructor.
+     *
+     * @param MasterDataService $masterDataService
+     * @param MasterDataValidation $masterDataValidation
+     */
     public function __construct(
         private MasterDataService $masterDataService,
         private MasterDataValidation $masterDataValidation,
     ) {
     }
 
+    /**
+     * List all items within a specific master data domain.
+     *
+     * @param string $domain The domain key (e.g., 'countries', 'sectors').
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function index(string $domain, Request $request): JsonResponse
     {
         $validator = $this->masterDataValidation->indexValidation($request, $domain);
@@ -35,6 +56,13 @@ final class MasterDataController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Retrieve details for a specific master data item.
+     *
+     * @param string $domain The domain key.
+     * @param string $id Item ID.
+     * @return JsonResponse
+     */
     public function show(string $domain, string $id): JsonResponse
     {
         $validator = $this->masterDataValidation->getByIdValidation($domain, $id);
@@ -52,6 +80,13 @@ final class MasterDataController extends Controller
         return $this->successResponse($result, __('master_data.messages.fetch_success'));
     }
 
+    /**
+     * Create a new item within a master data domain.
+     *
+     * @param string $domain The domain key.
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function store(string $domain, Request $request): JsonResponse
     {
         $validator = $this->masterDataValidation->createValidation($request, $domain);
@@ -75,6 +110,14 @@ final class MasterDataController extends Controller
         return $this->createdResponse($result, __('master_data.messages.create_success'));
     }
 
+    /**
+     * Update an existing master data item.
+     *
+     * @param string $domain The domain key.
+     * @param string $id Item ID.
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function update(string $domain, string $id, Request $request): JsonResponse
     {
         $validator = $this->masterDataValidation->updateValidation($domain, $id, $request);
@@ -98,6 +141,13 @@ final class MasterDataController extends Controller
         return $this->successResponse($result, __('master_data.messages.update_success'));
     }
 
+    /**
+     * Remove an item from a master data domain.
+     *
+     * @param string $domain The domain key.
+     * @param string $id Item ID.
+     * @return JsonResponse
+     */
     public function destroy(string $domain, string $id): JsonResponse
     {
         $validator = $this->masterDataValidation->getByIdValidation($domain, $id);

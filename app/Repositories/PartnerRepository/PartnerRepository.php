@@ -11,11 +11,22 @@ use Illuminate\Support\Facades\DB;
 
 final class PartnerRepository extends BaseRepository implements PartnerRepositoryInterface
 {
+    /**
+     * Get the model class name for the repository.
+     *
+     * @return string
+     */
     public function getModel(): string
     {
         return Partner::class;
     }
 
+    /**
+     * Get a paginated list of partners with support for searching by name/code and filtering by status, sector, and country.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function getPaginated(Request $request): array
     {
         $page = max(1, (int) $request->input('page', 1));

@@ -12,6 +12,12 @@ use Illuminate\Support\Str;
 
 final class TeamRepository implements TeamRepositoryInterface
 {
+    /**
+     * Get a list of organizational units with basic identifying information.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function getUnits(Request $request): array
     {
         $rows = DB::table('ipa_org_unit')
@@ -32,6 +38,13 @@ final class TeamRepository implements TeamRepositoryInterface
         ];
     }
 
+    /**
+     * Generate a comprehensive team dashboard including member stats, performance, and unit-scoped data.
+     * Calculates performance based on task counts and overdue status.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function getDashboard(Request $request): array
     {
         $unitId = $request->filled('unitId') ? (int) $request->input('unitId') : null;
@@ -131,6 +144,12 @@ final class TeamRepository implements TeamRepositoryInterface
         ];
     }
 
+    /**
+     * Create a new team member and assign them to a primary organizational unit.
+     *
+     * @param array $attributes
+     * @return array
+     */
     public function createMember(array $attributes): array
     {
         $nextIndex = ((int) DB::table('ipa_user')->count()) + 1;
@@ -178,6 +197,12 @@ final class TeamRepository implements TeamRepositoryInterface
         return $this->normalizeMember($userId);
     }
 
+    /**
+     * Standardize a team member's information into a response array.
+     *
+     * @param int $userId
+     * @return array
+     */
     private function normalizeMember(int $userId): array
     {
         $row = DB::table('ipa_user as u')
@@ -235,6 +260,12 @@ final class TeamRepository implements TeamRepositoryInterface
         ];
     }
 
+    /**
+     * Fetch recent team activities, combining task updates and login events.
+     *
+     * @param int|null $unitId
+     * @return array
+     */
     private function resolveActivities(?int $unitId): array
     {
         $taskActivities = DB::table('ipa_task_status_history as tsh')
@@ -291,6 +322,15 @@ final class TeamRepository implements TeamRepositoryInterface
         return array_slice($activities, 0, 3);
     }
 
+    /**
+     * Map user metrics and status to a human-readable attendance or workflow state.
+     *
+     * @param int $userStatus
+     * @param mixed $lastLoginAt
+     * @param int $totalTasks
+     * @param int $overdueTasks
+     * @return string
+     */
     private function resolveStatus(int $userStatus, mixed $lastLoginAt, int $totalTasks, int $overdueTasks): string
     {
         if ($userStatus !== 1) {
@@ -310,6 +350,13 @@ final class TeamRepository implements TeamRepositoryInterface
         return $totalTasks === 0 ? 'On Leave' : 'In Office';
     }
 
+    /**
+     * Resolve a descriptive role name for a user based on their position and unit.
+     *
+     * @param string|null $positionTitle
+     * @param string|null $unitName
+     * @return string
+     */
     private function resolveRoleName(?string $positionTitle, ?string $unitName): string
     {
         $positionTitle = trim((string) $positionTitle);
@@ -321,6 +368,12 @@ final class TeamRepository implements TeamRepositoryInterface
         return $unitName !== null && trim($unitName) !== '' ? trim($unitName) : 'Chuyên viên';
     }
 
+    /**
+     * Convert a datetime value into a Vietnamese relative time string (e.g., "10p trước").
+     *
+     * @param mixed $dateTime
+     * @return string
+     */
     private function relativeTime(mixed $dateTime): string
     {
         if ($dateTime === null) {
@@ -345,6 +398,12 @@ final class TeamRepository implements TeamRepositoryInterface
         return $days . ' ngày trước';
     }
 
+    /**
+     * Aggregate member statuses into a summary counts object.
+     *
+     * @param \Illuminate\Support\Collection<int, mixed> $rows
+     * @return array
+     */
     private function resolveSummary($rows): array
     {
         $members = $rows->map(function (object $row): string {

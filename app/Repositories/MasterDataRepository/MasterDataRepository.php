@@ -15,6 +15,13 @@ use Illuminate\Support\Str;
 
 final class MasterDataRepository extends BaseRepository implements MasterDataRepositoryInterface
 {
+    /**
+     * Get the appropriate query builder based on the master data domain.
+     * Some domains map to separate tables (Sector, Location), while others go to 'ipa_master_data'.
+     *
+     * @param string $domain
+     * @return Builder
+     */
     private function getTargetBuilder(string $domain): Builder
     {
         return match ($domain) {
@@ -24,16 +31,34 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
         };
     }
 
+    /**
+     * Get the primary model class for this repository.
+     *
+     * @return string
+     */
     public function getModel(): string
     {
         return MasterData::class;
     }
 
+    /**
+     * Get all currently supported master data domains.
+     *
+     * @return array
+     */
     public function getAllowedDomains(): array
     {
         return array_keys(config('master_data.domains', []));
     }
 
+    /**
+     * Retrieve all items or filter items by keyword within a specific master data domain.
+     * Supports custom sorting per request.
+     *
+     * @param string $domain
+     * @param Request $request
+     * @return array
+     */
     public function getAllOrSearch(string $domain, Request $request): array
     {
         $query = $this->getTargetBuilder($domain);
@@ -74,6 +99,13 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
         ];
     }
 
+    /**
+     * Find a specific master data item by its domain and unique identifier.
+     *
+     * @param string $domain
+     * @param string $id
+     * @return array|null
+     */
     public function findByDomainAndId(string $domain, string $id): ?array
     {
         $item = $this->model->newQuery()
@@ -84,6 +116,13 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
         return $item ? $this->normalize($item) : null;
     }
 
+    /**
+     * Create a new record in the primary master data table.
+     *
+     * @param string $domain
+     * @param array $attributes
+     * @return array
+     */
     public function createItem(string $domain, array $attributes): array
     {
         $payload = [
@@ -103,6 +142,14 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
         return $this->normalize($record);
     }
 
+    /**
+     * Update an existing record in the primary master data table.
+     *
+     * @param string $domain
+     * @param string $id
+     * @param array $attributes
+     * @return array|null
+     */
     public function updateItem(string $domain, string $id, array $attributes): ?array
     {
         $record = $this->model->newQuery()
@@ -127,6 +174,13 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
         return $this->normalize($record->refresh());
     }
 
+    /**
+     * Delete a master data item from the primary table.
+     *
+     * @param string $domain
+     * @param string $id
+     * @return bool
+     */
     public function deleteItem(string $domain, string $id): bool
     {
         $record = $this->model->newQuery()
@@ -141,6 +195,13 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
         return (bool) $record->delete();
     }
 
+    /**
+     * Transform a master data model (or related models like Sector/Location) into a standardized response array.
+     *
+     * @param mixed $item
+     * @param string $domain
+     * @return array
+     */
     private function normalize($item, string $domain = ''): array
     {
         if ($domain === 'location') {

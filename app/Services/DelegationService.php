@@ -5,40 +5,87 @@ namespace App\Services;
 use App\Repositories\DelegationRepository\DelegationRepositoryInterface;
 use App\Repositories\AdminUserRepository\AdminUserRepositoryInterface;
 use App\Services\NotificationService;
+use App\Models\Delegation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Class DelegationService
+ *
+ * Manages business logic for complex business delegations, including submission workflows,
+ * multi-role notifications, and structured commenting systems with mentions.
+ *
+ * @package App\Services
+ */
 class DelegationService
 {
+    /**
+     * @var DelegationRepositoryInterface
+     */
     protected $repository;
+
+    /**
+     * @var NotificationService
+     */
     protected $notificationService;
+
+    /**
+     * @var AdminUserRepositoryInterface
+     */
     protected $userRepository;
 
+    /**
+     * DelegationService constructor.
+     *
+     * @param DelegationRepositoryInterface $repository
+     * @param NotificationService $notificationService
+     * @param AdminUserRepositoryInterface $userRepository
+     */
     public function __construct(
         DelegationRepositoryInterface $repository,
         NotificationService $notificationService,
-        \App\Repositories\AdminUserRepository\AdminUserRepositoryInterface $userRepository
+        AdminUserRepositoryInterface $userRepository
     ) {
         $this->repository = $repository;
         $this->notificationService = $notificationService;
         $this->userRepository = $userRepository;
     }
 
+    /**
+     * Retrieve a paginated list of delegations.
+     *
+     * @param Request $request
+     * @return mixed
+     */
     public function listDelegations(Request $request)
     {
         return $this->repository->getPaginated($request);
     }
 
+    /**
+     * Get details for a specific delegation.
+     *
+     * @param int $id
+     * @return mixed
+     */
     public function getDelegation(int $id)
     {
         return $this->repository->getById($id);
     }
 
+    /**
+     * Create a new delegation and notify managers if submitted (status 1).
+     *
+     * @param array $data
+     * @return mixed
+     * @throws \Exception
+     */
     public function createDelegation(array $data)
     {
         try {
             return DB::transaction(function () use ($data) {
+                /** @var Delegation|null $delegation */
                 $delegation = $this->repository->create($data);
                 if ($delegation && (int)$delegation->status === 1) {
                     $this->notifyManagersOfSubmission($delegation);
@@ -51,13 +98,23 @@ class DelegationService
         }
     }
 
+    /**
+     * Update an existing delegation and trigger appropriate notifications based on status changes.
+     *
+     * @param int $id
+     * @param array $data
+     * @return mixed
+     * @throws \Exception
+     */
     public function updateDelegation(int $id, array $data)
     {
         try {
             return DB::transaction(function () use ($id, $data) {
+                /** @var Delegation|null $oldDelegation */
                 $oldDelegation = $this->repository->getById($id);
                 $oldStatus = $oldDelegation ? (int)$oldDelegation->status : null;
 
+                /** @var Delegation|null $delegation */
                 $delegation = $this->repository->update($id, $data);
 
                 if ($delegation) {
@@ -77,7 +134,13 @@ class DelegationService
         }
     }
 
-    protected function notifyManagersOfSubmission($delegation): void
+    /**
+     * Notify unit managers when a new delegation is submitted.
+     *
+     * @param Delegation $delegation
+     * @return void
+     */
+    protected function notifyManagersOfSubmission(Delegation $delegation): void
     {
         try {
             $managerIds = $this->userRepository->getIdsByRoleAndUnit('MANAGER', (int)$delegation->host_unit_id);
@@ -96,7 +159,14 @@ class DelegationService
         }
     }
 
-    protected function notifyStaffOfDecision($delegation, int $newStatus): void
+    /**
+     * Notify the delegation owner of approval/rejection/request-for-change decisions.
+     *
+     * @param Delegation $delegation
+     * @param int $newStatus
+     * @return void
+     */
+    protected function notifyStaffOfDecision(Delegation $delegation, int $newStatus): void
     {
         try {
             $statusText = match ($newStatus) {
@@ -124,6 +194,13 @@ class DelegationService
         }
     }
 
+    /**
+     * Remove a delegation record.
+     *
+     * @param int $id
+     * @return mixed
+     * @throws \Exception
+     */
     public function deleteDelegation(int $id)
     {
         try {
@@ -136,9 +213,16 @@ class DelegationService
 
     // --- Delegation Comments ---
 
+    /**
+     * Retrieve all comments for a specific delegation, including commenter details.
+     *
+     * @param int $delegationId
+     * @return array
+     */
     public function listComments(int $delegationId)
     {
         try {
+            /** @var Delegation|null $delegation */
             $delegation = $this->repository->getById($delegationId);
             if (!$delegation) {
                 return ['success' => false, 'message' => 'Không tìm thấy đoàn công tác.'];
@@ -153,9 +237,18 @@ class DelegationService
         }
     }
 
+    /**
+     * Add a comment to a delegation and notify involved parties.
+     *
+     * @param int $delegationId
+     * @param string $content
+     * @param int $commenterId
+     * @return array
+     */
     public function addComment(int $delegationId, string $content, int $commenterId)
     {
         try {
+            /** @var Delegation|null $delegation */
             $delegation = $this->repository->getById($delegationId);
             if (!$delegation) {
                 return ['success' => false, 'message' => 'Không tìm thấy đoàn công tác.'];
@@ -179,6 +272,14 @@ class DelegationService
         }
     }
 
+    /**
+     * Update an existing comment content.
+     *
+     * @param int $commentId
+     * @param string $content
+     * @param int $userId The identifier of the requesting user (auth check).
+     * @return array
+     */
     public function updateComment(int $commentId, string $content, int $userId)
     {
         try {
@@ -203,6 +304,13 @@ class DelegationService
         }
     }
 
+    /**
+     * Remove a comment.
+     *
+     * @param int $commentId
+     * @param int $userId The identifier of the requesting user (auth check).
+     * @return array
+     */
     public function deleteComment(int $commentId, int $userId)
     {
         try {
@@ -224,7 +332,15 @@ class DelegationService
         }
     }
 
-    protected function sendCommentNotifications($delegation, $comment, int $commenterId): void
+    /**
+     * Coordinate notifications for new comments, targeting the owner and @mentioned users.
+     *
+     * @param Delegation $delegation
+     * @param \App\Models\DelegationComment $comment
+     * @param int $commenterId
+     * @return void
+     */
+    protected function sendCommentNotifications(Delegation $delegation, \App\Models\DelegationComment $comment, int $commenterId): void
     {
         $recipients = collect();
 
@@ -255,6 +371,12 @@ class DelegationService
         }
     }
 
+    /**
+     * Extract user mentions from comment text using @[Name] format.
+     *
+     * @param string $text
+     * @return array Array of mentioned user IDs.
+     */
     private function parseMentions(string $text): array
     {
         preg_match_all('/@\[(.*?)\]/', $text, $matches);

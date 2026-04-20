@@ -17,6 +17,12 @@ use Illuminate\Support\Str;
 
 final class DocumentRepository implements DocumentRepositoryInterface
 {
+    /**
+     * Get a list of folders with filtering by parent folder and scope type.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function getFolders(Request $request): array
     {
         $query = Folder::query();
@@ -37,6 +43,12 @@ final class DocumentRepository implements DocumentRepositoryInterface
         return ['items' => $items];
     }
 
+    /**
+     * Create a new folder record.
+     *
+     * @param array $attributes
+     * @return array
+     */
     public function createFolder(array $attributes): array
     {
         $folder = Folder::create([
@@ -49,6 +61,12 @@ final class DocumentRepository implements DocumentRepositoryInterface
         return $this->normalizeFolder($folder);
     }
 
+    /**
+     * Get a list of files within a specific folder or globally.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function getFiles(Request $request): array
     {
         $query = File::query();
@@ -66,6 +84,12 @@ final class DocumentRepository implements DocumentRepositoryInterface
         return ['items' => $items];
     }
 
+    /**
+     * Get detailed file information including its versions and sharing history.
+     *
+     * @param string $id
+     * @return array|null
+     */
     public function getFileById(string $id): ?array
     {
         $file = File::query()->where('id', $id)->first();
@@ -91,6 +115,14 @@ final class DocumentRepository implements DocumentRepositoryInterface
         ];
     }
 
+    /**
+     * Handle file upload, storage, and database record creation within a transaction.
+     * Also initializes the first version of the file.
+     *
+     * @param array $attributes
+     * @param UploadedFile|null $file
+     * @return array
+     */
     public function uploadFile(array $attributes, ?UploadedFile $file = null): array
     {
         return DB::transaction(function () use ($attributes, $file): array {
@@ -135,6 +167,13 @@ final class DocumentRepository implements DocumentRepositoryInterface
         });
     }
 
+    /**
+     * Update an existing file's name or metadata.
+     *
+     * @param string $id
+     * @param array $attributes
+     * @return array|null
+     */
     public function updateFile(string $id, array $attributes): ?array
     {
         $record = File::query()->where('id', $id)->first();
@@ -150,6 +189,13 @@ final class DocumentRepository implements DocumentRepositoryInterface
         return $this->normalizeFile($record->refresh());
     }
 
+    /**
+     * Create a temporary download URL for a file.
+     * Note: Current implementation uses a simple public storage link.
+     *
+     * @param string $id
+     * @return array|null
+     */
     public function createDownloadUrl(string $id): ?array
     {
         $record = File::query()->where('id', $id)->first();
@@ -168,6 +214,13 @@ final class DocumentRepository implements DocumentRepositoryInterface
         ];
     }
 
+    /**
+     * Share a file with a specific user or role.
+     *
+     * @param string $id
+     * @param array $attributes
+     * @return array|null
+     */
     public function shareFile(string $id, array $attributes): ?array
     {
         $record = File::query()->where('id', $id)->first();
@@ -190,6 +243,12 @@ final class DocumentRepository implements DocumentRepositoryInterface
         return ['shareId' => (string) $share->id];
     }
 
+    /**
+     * Normalize a folder model into a standardized API response array.
+     *
+     * @param Folder $folder
+     * @return array
+     */
     private function normalizeFolder(Folder $folder): array
     {
         return [
@@ -203,6 +262,12 @@ final class DocumentRepository implements DocumentRepositoryInterface
         ];
     }
 
+    /**
+     * Normalize a file model into a standardized API response array.
+     *
+     * @param File $file
+     * @return array
+     */
     private function normalizeFile(File $file): array
     {
         return [
@@ -223,6 +288,12 @@ final class DocumentRepository implements DocumentRepositoryInterface
         ];
     }
 
+    /**
+     * Normalize a file version model into a standardized API response array.
+     *
+     * @param FileVersion $version
+     * @return array
+     */
     private function normalizeVersion(FileVersion $version): array
     {
         return [
@@ -237,6 +308,12 @@ final class DocumentRepository implements DocumentRepositoryInterface
         ];
     }
 
+    /**
+     * Normalize a file share model into a standardized API response array.
+     *
+     * @param FileShare $share
+     * @return array
+     */
     private function normalizeShare(FileShare $share): array
     {
         return [
@@ -251,6 +328,13 @@ final class DocumentRepository implements DocumentRepositoryInterface
         ];
     }
 
+    /**
+     * Build a unique storage path/key for a file.
+     *
+     * @param int|string $fileId
+     * @param string $fileName
+     * @return string
+     */
     private function buildStorageKey(int|string $fileId, string $fileName): string
     {
         $safeName = Str::slug(pathinfo($fileName, PATHINFO_FILENAME)) ?: 'document';
@@ -260,6 +344,12 @@ final class DocumentRepository implements DocumentRepositoryInterface
         return sprintf('documents/%s/%s%s', $fileId, $safeName . '-' . Str::uuid(), $suffix);
     }
 
+    /**
+     * Resolve a human-readable scope type string/int into the system's numeric constant.
+     *
+     * @param string|int|null $scopeType
+     * @return int
+     */
     private function resolveScopeType(string|int|null $scopeType): int
     {
         if (is_int($scopeType) || ctype_digit((string) $scopeType)) {
@@ -276,6 +366,12 @@ final class DocumentRepository implements DocumentRepositoryInterface
         };
     }
 
+    /**
+     * Format a numeric scope type constant into its human-readable string representation.
+     *
+     * @param int $scopeType
+     * @return string
+     */
     private function formatScopeType(int $scopeType): string
     {
         return match ($scopeType) {
@@ -288,11 +384,23 @@ final class DocumentRepository implements DocumentRepositoryInterface
         };
     }
 
+    /**
+     * Map a semantic permission level string to its numeric constant.
+     *
+     * @param string $permissionLevel
+     * @return int
+     */
     private function resolvePermissionLevel(string $permissionLevel): int
     {
         return strtoupper(trim($permissionLevel)) === 'EDIT' ? 1 : 0;
     }
 
+    /**
+     * Resolve a user ID from a username, email, or numeric string.
+     *
+     * @param mixed $value
+     * @return int|null
+     */
     private function resolveUserTargetId(mixed $value): ?int
     {
         if ($value === null || $value === '') {
@@ -311,6 +419,12 @@ final class DocumentRepository implements DocumentRepositoryInterface
         return $resolved !== null ? (int) $resolved : (int) (DB::table('ipa_user')->min('id') ?? 0);
     }
 
+    /**
+     * Resolve a role ID from a role code, name, or numeric string.
+     *
+     * @param mixed $value
+     * @return int|null
+     */
     private function resolveRoleTargetId(mixed $value): ?int
     {
         if ($value === null || $value === '') {
@@ -329,6 +443,12 @@ final class DocumentRepository implements DocumentRepositoryInterface
         return $resolved !== null ? (int) $resolved : (int) (DB::table('ipa_role')->min('id') ?? 0);
     }
 
+    /**
+     * Format a numeric permission level into its human-readable string.
+     *
+     * @param int $permissionLevel
+     * @return string
+     */
     private function formatPermissionLevel(int $permissionLevel): string
     {
         return $permissionLevel === 1 ? 'EDIT' : 'VIEW';

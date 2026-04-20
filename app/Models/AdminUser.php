@@ -8,6 +8,33 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
+/**
+ * Class AdminUser
+ *
+ * Represents an administrative user in the system.
+ *
+ * @package App\Models
+ *
+ * @property int $id
+ * @property string $username
+ * @property string|null $email
+ * @property string|null $full_name
+ * @property string|null $password
+ * @property string|null $avatar_url
+ * @property string|null $phone
+ * @property int|null $primary_unit_id
+ * @property int $status
+ * @property \Illuminate\Support\Carbon|null $last_login_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ *
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Role[] $roles
+ * @property-read \App\Models\OrgUnit|null $unit
+ * @property-read string|null $role Primary role code.
+ * @property-read array $role_codes List of all role codes.
+ * @property-read array $permission_codes List of all unique permission codes.
+ * @property-read string|null $avatar Full URL to the avatar.
+ */
 final class AdminUser extends Authenticatable implements JWTSubject
 {
     use HasFactory;

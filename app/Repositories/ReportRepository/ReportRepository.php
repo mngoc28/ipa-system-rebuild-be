@@ -12,11 +12,21 @@ use Illuminate\Support\Facades\DB;
 
 final class ReportRepository extends BaseRepository implements ReportRepositoryInterface
 {
+    /**
+     * Get the model class name for the repository.
+     *
+     * @return string
+     */
     public function getModel(): string
     {
         return ReportRun::class;
     }
 
+    /**
+     * Get a list of all report definitions including their codes, names, and query configurations.
+     *
+     * @return array
+     */
     public function listDefinitions(): array
     {
         $rows = DB::table('ipa_report_definition as definition')
@@ -48,6 +58,12 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
         ];
     }
 
+    /**
+     * Generate a comprehensive summary of report generation activities, KPIs, and forecasts.
+     * Includes data scoping to ensure users only see runs related to their role and unit.
+     *
+     * @return array
+     */
     public function summary(): array
     {
         $metricValues = $this->resolveMetricValues();
@@ -158,6 +174,13 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
         ];
     }
 
+    /**
+     * Create a record for a new report run, identifying the definition and assigning a default user if none provided.
+     *
+     * @param array $attributes
+     * @param int|null $runBy
+     * @return array|null
+     */
     public function createRun(array $attributes, ?int $runBy = null): ?array
     {
         return DB::transaction(function () use ($attributes, $runBy): ?array {
@@ -186,6 +209,12 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
         });
     }
 
+    /**
+     * Find a specific report run by ID and return its normalized details.
+     *
+     * @param string $runId
+     * @return array|null
+     */
     public function findRun(string $runId): ?array
     {
         $row = DB::table('ipa_report_run as run')
@@ -214,6 +243,12 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
         return $this->normalizeRun($row);
     }
 
+    /**
+     * Resolve a report definition from a code or numeric string ID.
+     *
+     * @param string $reportCode
+     * @return mixed
+     */
     private function resolveDefinition(string $reportCode): mixed
     {
         if ($reportCode === '') {
@@ -235,11 +270,22 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
         return null;
     }
 
+    /**
+     * provide a fallback user ID for report generation if none is explicitly specified.
+     *
+     * @return int
+     */
     private function resolveDefaultUserId(): int
     {
         return (int) (DB::table('ipa_user')->value('id') ?? 1);
     }
 
+    /**
+     * Transform a report run row into a standardized response array.
+     *
+     * @param object $row
+     * @return array
+     */
     private function normalizeRun(object $row): array
     {
         return [
@@ -255,6 +301,12 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
         ];
     }
 
+    /**
+     * Map a numeric status integer to a human-readable semantic label.
+     *
+     * @param int $status
+     * @return string
+     */
     private function statusToLabel(int $status): string
     {
         return match ($status) {
@@ -265,6 +317,12 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
         };
     }
 
+    /**
+     * Standardize a nullable date value into an ISO8601 string.
+     *
+     * @param mixed $value
+     * @return string|null
+     */
     private function formatNullableDate(mixed $value): ?string
     {
         if ($value === null || $value === '') {
@@ -274,6 +332,11 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
         return Carbon::parse((string) $value)->toIso8601String();
     }
 
+    /**
+     * Fetch the latest numeric values for predefined KPI metrics from snapshots.
+     *
+     * @return array
+     */
     private function resolveMetricValues(): array
     {
         $codes = [
@@ -307,6 +370,12 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
         return $values;
     }
 
+    /**
+     * Format a numeric value as a currency string for forecast headlines.
+     *
+     * @param float $value
+     * @return string
+     */
     private function formatForecastCurrency(float $value): string
     {
         return number_format($value, 0, ',', '.') . ' ₫';

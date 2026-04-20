@@ -11,14 +11,34 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Class DocumentController
+ *
+ * Manages virtual folders and files, including uploads, downloads,
+ * sharing permissions, and scope-based organization.
+ *
+ * @package App\Http\Controllers
+ */
 final class DocumentController extends Controller
 {
+    /**
+     * DocumentController constructor.
+     *
+     * @param DocumentService $documentService
+     * @param DocumentValidation $documentValidation
+     */
     public function __construct(
         private DocumentService $documentService,
         private DocumentValidation $documentValidation,
     ) {
     }
 
+    /**
+     * List folders based on scope and parent IDs.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function foldersIndex(Request $request): JsonResponse
     {
         $validator = $this->documentValidation->foldersIndexValidation($request);
@@ -36,6 +56,12 @@ final class DocumentController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Create a new virtual folder within a specific scope.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function foldersStore(Request $request): JsonResponse
     {
         $validator = $this->documentValidation->foldersStoreValidation($request);
@@ -80,6 +106,12 @@ final class DocumentController extends Controller
         return $this->createdResponse($result, __('documents.messages.folder_create_success'));
     }
 
+    /**
+     * List files based on folder, module scope, or search criteria.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function filesIndex(Request $request): JsonResponse
     {
         $validator = $this->documentValidation->filesIndexValidation($request);
@@ -97,6 +129,12 @@ final class DocumentController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Get metadata for a specific file.
+     *
+     * @param string $id
+     * @return JsonResponse
+     */
     public function filesShow(string $id): JsonResponse
     {
         $validator = $this->documentValidation->fileIdValidation($id);
@@ -114,6 +152,12 @@ final class DocumentController extends Controller
         return $this->successResponse($result, __('documents.messages.fetch_success'));
     }
 
+    /**
+     * Upload a new file and associate it with a folder or module.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function filesUpload(Request $request): JsonResponse
     {
         $validator = $this->documentValidation->uploadValidation($request);
@@ -144,6 +188,13 @@ final class DocumentController extends Controller
         return $this->createdResponse($result, __('documents.messages.file_upload_success'));
     }
 
+    /**
+     * Update file metadata (e.g., rename).
+     *
+     * @param string $id
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function filesPatch(string $id, Request $request): JsonResponse
     {
         $validator = $this->documentValidation->fileIdValidation($id);
@@ -167,6 +218,12 @@ final class DocumentController extends Controller
         return $this->successResponse(['updated' => true, 'file' => $result], __('documents.messages.file_update_success'));
     }
 
+    /**
+     * Generate a temporary secure download URL for a file.
+     *
+     * @param string $id
+     * @return JsonResponse
+     */
     public function filesDownloadUrl(string $id): JsonResponse
     {
         $validator = $this->documentValidation->fileIdValidation($id);
@@ -184,6 +241,13 @@ final class DocumentController extends Controller
         return $this->createdResponse($result, __('documents.messages.download_url_success'));
     }
 
+    /**
+     * Share a file with specific users or roles.
+     *
+     * @param string $id
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function filesShare(string $id, Request $request): JsonResponse
     {
         $validator = $this->documentValidation->fileIdValidation($id);
@@ -212,6 +276,12 @@ final class DocumentController extends Controller
         return $this->createdResponse($result, __('documents.messages.share_success'));
     }
 
+    /**
+     * Resolves the user identity for the current request.
+     *
+     * @param Request $request
+     * @return int User ID.
+     */
     private function resolveUserId(Request $request): int
     {
         $authenticatedUserId = (int) ($request->user()?->id ?? 0);
@@ -247,6 +317,12 @@ final class DocumentController extends Controller
         return (int) ($query->value('id') ?? 0);
     }
 
+    /**
+     * Maps scope string identifiers to their internal integer representation.
+     *
+     * @param string $scopeType
+     * @return int Scope ID.
+     */
     private function resolveScopeType(string $scopeType): int
     {
         return match (strtoupper(trim($scopeType))) {

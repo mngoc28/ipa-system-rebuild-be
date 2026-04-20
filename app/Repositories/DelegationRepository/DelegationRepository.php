@@ -9,13 +9,28 @@ use Illuminate\Support\Carbon;
 
 class DelegationRepository implements DelegationRepositoryInterface
 {
+    /**
+     * @var Delegation The Eloquent model instance.
+     */
     private $model;
 
+    /**
+     * DelegationRepository constructor.
+     *
+     * @param Delegation $model
+     */
     public function __construct(Delegation $model)
     {
         $this->model = $model;
     }
 
+    /**
+     * Get a paginated list of delegations with scoping, search, and filtering.
+     * Scoping is applied based on the user's role (Staff can only see their own, Managers see their unit).
+     *
+     * @param Request $request
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
     public function getPaginated(Request $request)
     {
         $query = $this->model->newQuery();
@@ -75,6 +90,13 @@ class DelegationRepository implements DelegationRepositoryInterface
         return $query->paginate($request->get('per_page', 10));
     }
 
+    /**
+     * Get a specific delegation by ID with all relevant relationships.
+     * Scoping rules are applied similar to getPaginated.
+     *
+     * @param int $id
+     * @return Delegation|null
+     */
     public function getById(int $id)
     {
         $query = $this->model->newQuery();
@@ -107,6 +129,12 @@ class DelegationRepository implements DelegationRepositoryInterface
         ])->find($id);
     }
 
+    /**
+     * Create a new delegation and its related entities (members, events, partners, sectors, checklist, outcomes, contacts).
+     *
+     * @param array $data
+     * @return Delegation
+     */
     public function create(array $data)
     {
         $membersData = (array) ($data['members'] ?? []);
@@ -219,6 +247,14 @@ class DelegationRepository implements DelegationRepositoryInterface
         ]);
     }
 
+    /**
+     * Update an existing delegation and refresh its related entities.
+     * Relational data is typically cleared and recreated for consistency.
+     *
+     * @param int $id
+     * @param array $data
+     * @return Delegation|null
+     */
     public function update(int $id, array $data)
     {
         $record = $this->model->find($id);
@@ -331,6 +367,12 @@ class DelegationRepository implements DelegationRepositoryInterface
         return null;
     }
 
+    /**
+     * Delete a delegation record by ID.
+     *
+     * @param int $id
+     * @return bool|null
+     */
     public function delete(int $id)
     {
         $record = $this->model->find($id);
@@ -340,6 +382,13 @@ class DelegationRepository implements DelegationRepositoryInterface
         return false;
     }
 
+    /**
+     * Update a specific delegation comment directly via DB table.
+     *
+     * @param int $commentId
+     * @param array $data
+     * @return int
+     */
     public function updateComment(int $commentId, array $data)
     {
         return \DB::table('ipa_delegation_comment')
@@ -347,6 +396,12 @@ class DelegationRepository implements DelegationRepositoryInterface
             ->update($data);
     }
 
+    /**
+     * Delete a specific delegation comment directly via DB table.
+     *
+     * @param int $commentId
+     * @return int
+     */
     public function deleteComment(int $commentId)
     {
         return \DB::table('ipa_delegation_comment')

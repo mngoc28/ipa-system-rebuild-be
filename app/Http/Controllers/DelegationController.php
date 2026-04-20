@@ -7,15 +7,34 @@ use App\Services\DelegationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Class DelegationController
+ *
+ * Manages the investment delegation lifecycle, including CRUD operations,
+ * commenting (with mentions), and activity tracking for incoming/outgoing delegations.
+ *
+ * @package App\Http\Controllers
+ */
 class DelegationController extends Controller
 {
     protected $service;
 
+    /**
+     * DelegationController constructor.
+     *
+     * @param DelegationService $service
+     */
     public function __construct(DelegationService $service)
     {
         $this->service = $service;
     }
 
+    /**
+     * List delegations with filtering and pagination.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request)
     {
         $delegations = $this->service->listDelegations($request);
@@ -34,6 +53,12 @@ class DelegationController extends Controller
         ]);
     }
 
+    /**
+     * Retrieve details for a specific delegation.
+     *
+     * @param int|string $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function show($id)
     {
         $delegation = $this->service->getDelegation((int)$id);
@@ -53,6 +78,12 @@ class DelegationController extends Controller
         ]);
     }
 
+    /**
+     * Create a new delegation record.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $validator = DelegationValidation::validateStore($request);
@@ -97,6 +128,13 @@ class DelegationController extends Controller
         }
     }
 
+    /**
+     * Update an existing delegation's information.
+     *
+     * @param Request $request
+     * @param int|string $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function update(Request $request, $id)
     {
         $validator = DelegationValidation::validateUpdate($request);
@@ -134,6 +172,12 @@ class DelegationController extends Controller
         }
     }
 
+    /**
+     * Soft-delete a delegation record.
+     *
+     * @param int|string $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function destroy($id)
     {
         try {
@@ -158,6 +202,12 @@ class DelegationController extends Controller
         }
     }
 
+    /**
+     * List all comments associated with a delegation.
+     *
+     * @param int|string $id Delegation ID.
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function listComments($id)
     {
         $result = $this->service->listComments((int)$id);
@@ -172,6 +222,13 @@ class DelegationController extends Controller
         return response()->json($result);
     }
 
+    /**
+     * Add a new comment to a delegation, supporting @mentions.
+     *
+     * @param Request $request
+     * @param int|string $id Delegation ID.
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function addComment(Request $request, $id)
     {
         $request->validate([
@@ -192,6 +249,14 @@ class DelegationController extends Controller
         return response()->json($result, 201);
     }
 
+    /**
+     * Update an existing comment's content.
+     *
+     * @param Request $request
+     * @param int|string $id Delegation ID.
+     * @param int|string $commentId Comment ID.
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function updateComment(Request $request, $id, $commentId)
     {
         $request->validate([
@@ -211,6 +276,14 @@ class DelegationController extends Controller
         return response()->json($result);
     }
 
+    /**
+     * Remove a comment from a delegation.
+     *
+     * @param Request $request
+     * @param int|string $id Delegation ID.
+     * @param int|string $commentId Comment ID.
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function deleteComment(Request $request, $id, $commentId)
     {
         $userId = $this->resolveUserId($request);
@@ -229,7 +302,13 @@ class DelegationController extends Controller
     /**
      * Resolve user ID from request (Mocking auth for development)
      */
-    private function resolveUserId(Request $request)
+    /**
+     * Resolve user ID from request (Mocking auth for development).
+     *
+     * @param Request $request
+     * @return int|string User ID.
+     */
+    private function resolveUserId(Request $request): int|string
     {
         return auth()->id() ?: 1;
     }

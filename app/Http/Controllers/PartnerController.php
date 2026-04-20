@@ -13,14 +13,34 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Class PartnerController
+ *
+ * Manages investment partners and organizations, including contacts,
+ * interaction tracking, and organization profiles.
+ *
+ * @package App\Http\Controllers
+ */
 final class PartnerController extends Controller
 {
+    /**
+     * PartnerController constructor.
+     *
+     * @param PartnerService $partnerService
+     * @param PartnerValidation $partnerValidation
+     */
     public function __construct(
         private PartnerService $partnerService,
         private PartnerValidation $partnerValidation,
     ) {
     }
 
+    /**
+     * List investment partners with filtering and pagination.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function index(Request $request): JsonResponse
     {
         $validator = $this->partnerValidation->indexValidation($request);
@@ -38,6 +58,11 @@ final class PartnerController extends Controller
         return $this->successResponse($result['data'], $result['message'], HttpStatus::OK, $result['data']['meta']);
     }
 
+    /**
+     * Retrieve list of partners for selection options (Dropdowns).
+     *
+     * @return JsonResponse
+     */
     public function options(): JsonResponse
     {
         $result = $this->partnerService->getOptions();
@@ -49,6 +74,12 @@ final class PartnerController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Retrieve detailed information for a specific partner.
+     *
+     * @param int $id Partner ID.
+     * @return JsonResponse
+     */
     public function show(int $id): JsonResponse
     {
         $result = $this->partnerService->getById($id);
@@ -60,6 +91,12 @@ final class PartnerController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Create a new partner record.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function store(Request $request): JsonResponse
     {
         $validator = $this->partnerValidation->storeValidation($request);
@@ -77,6 +114,13 @@ final class PartnerController extends Controller
         return $this->successResponse($result['data'], $result['message'], HttpStatus::CREATED);
     }
 
+    /**
+     * Update an existing partner's record.
+     *
+     * @param Request $request
+     * @param int $id Partner ID.
+     * @return JsonResponse
+     */
     public function update(Request $request, int $id): JsonResponse
     {
         $validator = $this->partnerValidation->updateValidation($request, $id);
@@ -94,6 +138,12 @@ final class PartnerController extends Controller
         return $this->successResponse($result['data'], $result['message']);
     }
 
+    /**
+     * Remove a partner record from the system.
+     *
+     * @param int $id Partner ID.
+     * @return JsonResponse
+     */
     public function destroy(int $id): JsonResponse
     {
         $result = $this->partnerService->delete($id);
@@ -105,6 +155,13 @@ final class PartnerController extends Controller
         return $this->successResponse(null, $result['message']);
     }
 
+    /**
+     * Add a new contact person to a partner organization.
+     *
+     * @param Request $request
+     * @param int $id Partner ID.
+     * @return JsonResponse
+     */
     public function storeContact(Request $request, int $id): JsonResponse
     {
         $validator = $this->partnerValidation->contactValidation($request);
@@ -142,6 +199,13 @@ final class PartnerController extends Controller
         ], __('partners.messages.contact_create_success'));
     }
 
+    /**
+     * Record a new interaction (meeting, call, etc.) with a partner.
+     *
+     * @param Request $request
+     * @param int $id Partner ID.
+     * @return JsonResponse
+     */
     public function storeInteraction(Request $request, int $id): JsonResponse
     {
         $validator = $this->partnerValidation->interactionValidation($request);
@@ -173,6 +237,13 @@ final class PartnerController extends Controller
         ], __('partners.messages.interaction_create_success'));
     }
 
+    /**
+     * Resolves the user identity for the current request.
+     * Supports authenticated users and mock overrides for development.
+     *
+     * @param Request $request
+     * @return int User ID.
+     */
     private function resolveUserId(Request $request): int
     {
         $authenticatedUserId = (int) ($request->user()?->id ?? 0);

@@ -9,13 +9,33 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Class EventService
+ *
+ * Orchestrates business logic for calendar events, including registration,
+ * rescheduling requests, and participation management.
+ *
+ * @package App\Services
+ */
 final class EventService
 {
+    /**
+     * EventService constructor.
+     *
+     * @param EventRepositoryInterface $eventRepository
+     */
     public function __construct(
         private EventRepositoryInterface $eventRepository,
     ) {
     }
 
+    /**
+     * Retrieve a paginated list of events, optionally scoped by a specific user's visibility.
+     *
+     * @param Request $request
+     * @param int|null $authUserId Contextual user identifier for visibility filtering.
+     * @return array Standard response structure with event data.
+     */
     public function getAll(Request $request, ?int $authUserId = null): array
     {
         try {
@@ -35,6 +55,12 @@ final class EventService
         }
     }
 
+    /**
+     * Retrieve details for a specific event by ID.
+     *
+     * @param string $id
+     * @return array Standard response bundle.
+     */
     public function getById(string $id): array
     {
         try {
@@ -64,6 +90,13 @@ final class EventService
         }
     }
 
+    /**
+     * Create a new calendar event.
+     *
+     * @param array $attributes Event details (title, start, end, etc.).
+     * @param int|null $requestedBy Identifier of the user initiating the creation.
+     * @return array Standard response bundle with the created event.
+     */
     public function create(array $attributes, ?int $requestedBy = null): array
     {
         try {
@@ -93,6 +126,13 @@ final class EventService
         }
     }
 
+    /**
+     * Update an existing event's details.
+     *
+     * @param string $id
+     * @param array $attributes Data to update.
+     * @return array Standard response bundle with the updated event.
+     */
     public function update(string $id, array $attributes): array
     {
         try {
@@ -122,6 +162,12 @@ final class EventService
         }
     }
 
+    /**
+     * Permanently remove an event and its associated attendance records.
+     *
+     * @param string $id
+     * @return array Standard response bundle indicating success status.
+     */
     public function delete(string $id): array
     {
         try {
@@ -143,6 +189,14 @@ final class EventService
         }
     }
 
+    /**
+     * Handle user participation (joining or leaving) an event.
+     *
+     * @param string $id
+     * @param int $userId The participant's identifier.
+     * @param bool $joined True to join, false to leave.
+     * @return array Standard response bundle.
+     */
     public function join(string $id, int $userId, bool $joined): array
     {
         try {
@@ -172,6 +226,14 @@ final class EventService
         }
     }
 
+    /**
+     * Submit a request to change the timing of an event.
+     *
+     * @param string $id
+     * @param array $attributes Reschedule specifics (proposed_start, reason, etc.).
+     * @param int $requestedBy Identifier of the user requesting the change.
+     * @return array Standard response bundle.
+     */
     public function requestReschedule(string $id, array $attributes, int $requestedBy): array
     {
         try {
