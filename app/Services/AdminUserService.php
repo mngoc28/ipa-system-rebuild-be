@@ -12,7 +12,7 @@ use Throwable;
 final class AdminUserService
 {
     public function __construct(
-        private readonly AdminUserRepositoryInterface $adminUserRepository,
+        private AdminUserRepositoryInterface $adminUserRepository,
     ) {
     }
 
@@ -86,6 +86,34 @@ final class AdminUserService
             Log::error('AdminUserService::lock', [
                 'userId' => $userId,
                 'locked' => $locked,
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    public function delete(string $userId): bool
+    {
+        try {
+            return (bool) $this->adminUserRepository->delete($userId);
+        } catch (Throwable $throwable) {
+            Log::error('AdminUserService::delete', [
+                'userId' => $userId,
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+    public function updateAvatar(string $userId, string $path): ?array
+    {
+        try {
+            return $this->adminUserRepository->updateAvatar($userId, $path);
+        } catch (Throwable $throwable) {
+            Log::error('AdminUserService::updateAvatar', [
+                'userId' => $userId,
+                'path' => $path,
                 'error' => $throwable->getMessage(),
             ]);
 

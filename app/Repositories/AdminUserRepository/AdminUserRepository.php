@@ -200,6 +200,10 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
                 $updates['full_name'] = Arr::get($attributes, 'fullName');
             }
 
+            if (Arr::has($attributes, 'email')) {
+                $updates['email'] = Arr::get($attributes, 'email');
+            }
+
             if (Arr::has($attributes, 'phone')) {
                 $updates['phone'] = Arr::get($attributes, 'phone');
             }
@@ -246,6 +250,23 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
             return [
                 'locked' => $locked,
             ];
+        });
+    }
+
+    public function delete($id)
+    {
+        return DB::transaction(function () use ($id): bool {
+            $userId = (string) $id;
+
+            $record = DB::table('ipa_user')->where('id', $userId)->first();
+            if (! $record) {
+                return false;
+            }
+
+            DB::table('ipa_user_role')->where('user_id', $userId)->delete();
+            DB::table('ipa_user_unit_assignment')->where('user_id', $userId)->delete();
+
+            return (bool) DB::table('ipa_user')->where('id', $userId)->delete();
         });
     }
 
@@ -323,6 +344,11 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
             'roles' => array_values($roles),
             'permissions' => [],
             'unit' => $unit,
+            'avatar' => $row->avatar_url
+                ? (str_starts_with($row->avatar_url, 'http')
+                    ? $row->avatar_url
+                    : rtrim((string) config('app.url'), '/') . '/storage/' . $row->avatar_url)
+                : null,
             'status' => ((int) $row->status === 1 ? 'active' : 'inactive'),
             'locked' => (int) $row->status !== 1,
         ];
@@ -442,5 +468,34 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
         }
 
         return array_values(array_unique($resolved));
+    }
+
+    public function getIdsByRoleAndUnit(string $roleCode, int $unitId): array
+    {
+        return DB::table('ipa_user as user')
+            ->join('ipa_user_role as user_role', 'user_role.user_id', '=', 'user.id')
+            ->join('ipa_role as role', 'role.id', '=', 'user_role.role_id')
+            ->where('user.primary_unit_id', $unitId)
+            ->where('role.code', strtoupper($roleCode))
+            ->where('user.status', 1) // Only active users
+            ->pluck('user.id')
+            ->map(fn($id) => (int) $id)
+            ->toArray();
+    }
+    public function updateAvatar(string $userId, string $path): ?array
+    {
+        return DB::transaction(function () use ($userId, $path): ?array {
+            $record = DB::table('ipa_user')->where('id', $userId)->first();
+            if (! $record) {
+                return null;
+            }
+
+            DB::table('ipa_user')->where('id', $userId)->update([
+                'avatar_url' => $path,
+                'updated_at' => now(),
+            ]);
+
+            return $this->findByUserId($userId);
+        });
     }
 }

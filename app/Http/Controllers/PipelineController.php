@@ -13,8 +13,8 @@ use Illuminate\Http\Request;
 final class PipelineController extends Controller
 {
     public function __construct(
-        private readonly PipelineService $pipelineService,
-        private readonly PipelineValidation $pipelineValidation,
+        private PipelineService $pipelineService,
+        private PipelineValidation $pipelineValidation,
     ) {
     }
 

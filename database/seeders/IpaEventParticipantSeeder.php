@@ -4,39 +4,36 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\AdminUser;
+use App\Models\Event;
+use App\Models\EventParticipant;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaEventParticipantSeeder extends Seeder
 {
     public function run(): void
     {
-        $eventIds = DB::table('ipa_event')->orderBy('id')->pluck('id');
-        $userIds = DB::table('ipa_user')->orderBy('id')->pluck('id');
+        if (DB::table('ipa_event_participant')->exists()) {
+            return;
+        }
 
-        if ($eventIds->isEmpty() || $userIds->isEmpty()) {
+        $eventIds = Event::orderBy('id')->pluck('id')->all();
+        $userIds = AdminUser::orderBy('id')->pluck('id')->all();
+
+        if ($eventIds === [] || $userIds === []) {
             return;
         }
 
         foreach ($eventIds as $index => $eventId) {
-            foreach ($userIds as $userId) {
-                $exists = DB::table('ipa_event_participant')
-                    ->where('event_id', $eventId)
-                    ->where('user_id', $userId)
-                    ->exists();
+            $selectedUsers = collect($userIds)->shuffle()->take(3)->values();
 
-                if ($exists) {
-                    continue;
-                }
-
-                DB::table('ipa_event_participant')->insert([
+            foreach ($selectedUsers as $participantIndex => $userId) {
+                EventParticipant::factory()->create([
                     'event_id' => $eventId,
                     'user_id' => $userId,
-                    'participation_status' => $index === 0 ? 1 : 0,
-                    'invited_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'participation_status' => $participantIndex === 0 ? 1 : ($participantIndex === 1 ? 0 : 2),
+                    'invited_at' => now()->subDays($index + $participantIndex),
                 ]);
             }
         }

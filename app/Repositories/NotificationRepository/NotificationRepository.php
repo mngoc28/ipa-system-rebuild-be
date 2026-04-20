@@ -70,6 +70,9 @@ final class NotificationRepository extends BaseRepository implements Notificatio
                 'title' => (string) $row->title,
                 'description' => (string) $row->body,
                 'message' => (string) $row->body,
+                'refTable' => (string) $row->ref_table,
+                'refId' => (string) $row->ref_id,
+                'severity' => (int) $row->severity,
                 'createdAt' => $this->formatDate($row->created_at ?? null),
                 'readAt' => $this->formatNullableDate($row->read_at ?? null),
                 'read' => $row->read_at !== null,
@@ -114,12 +117,42 @@ final class NotificationRepository extends BaseRepository implements Notificatio
             ->delete();
     }
 
-    private function countUnread(int $userId): int
+    public function countUnread(int $userId): int
     {
         return (int) DB::table('ipa_notification_recipient')
             ->where('recipient_user_id', $userId)
             ->whereNull('read_at')
             ->count();
+    }
+
+    public function createWithRecipients(array $data, array $recipientUserIds): ?int
+    {
+        return DB::transaction(function () use ($data, $recipientUserIds) {
+            $notificationId = DB::table('ipa_notification')->insertGetId([
+                'notification_type_id' => $data['notification_type_id'] ?? 1,
+                'title' => $data['title'] ?? '',
+                'body' => $data['body'] ?? '',
+                'ref_table' => $data['ref_table'] ?? null,
+                'ref_id' => $data['ref_id'] ?? null,
+                'severity' => $data['severity'] ?? 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            if ($notificationId) {
+                $recipients = array_map(fn($userId) => [
+                    'notification_id' => $notificationId,
+                    'recipient_user_id' => $userId,
+                    'delivery_status' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], $recipientUserIds);
+
+                DB::table('ipa_notification_recipient')->insert($recipients);
+            }
+
+            return $notificationId;
+        });
     }
 
     private function normalizeType(string $typeCode, string $title, string $body): string

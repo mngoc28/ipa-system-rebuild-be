@@ -12,7 +12,7 @@ use Throwable;
 final class SystemSettingService
 {
     public function __construct(
-        private readonly SystemSettingRepositoryInterface $systemSettingRepository,
+        private SystemSettingRepositoryInterface $systemSettingRepository,
     ) {
     }
 

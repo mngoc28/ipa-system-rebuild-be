@@ -12,8 +12,8 @@ use Illuminate\Http\JsonResponse;
 final class AdminIntegrationController extends Controller
 {
     public function __construct(
-        private readonly SystemSettingService $systemSettingService,
-        private readonly IntegrationValidation $integrationValidation,
+        private SystemSettingService $systemSettingService,
+        private IntegrationValidation $integrationValidation,
     ) {
     }
 

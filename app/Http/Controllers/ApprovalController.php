@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\DB;
 final class ApprovalController extends Controller
 {
     public function __construct(
-        private readonly ApprovalService $approvalService,
-        private readonly ApprovalValidation $approvalValidation,
+        private ApprovalService $approvalService,
+        private ApprovalValidation $approvalValidation,
     ) {
     }
 
@@ -37,6 +37,16 @@ final class ApprovalController extends Controller
         ];
 
         return $this->successResponse(['items' => $result->items()], __('approvals.messages.fetch_success'), HttpStatus::OK, $meta);
+    }
+
+    public function summary(Request $request): JsonResponse
+    {
+        // For simplicity, we just count pending (status 0/PENDING)
+        $query = \App\Models\ApprovalRequest::query()->whereIn('status', [0]);
+
+        return $this->successResponse([
+            'pendingCount' => $query->count()
+        ], 'Approval summary fetched successfully');
     }
 
     public function show(string $id): JsonResponse

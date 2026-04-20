@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 final class DashboardController extends Controller
 {
     public function __construct(
-        private readonly TaskService $taskService,
+        private TaskService $taskService,
     ) {
     }
 
@@ -45,17 +45,76 @@ final class DashboardController extends Controller
 
     private function buildSummary(string $scope): array
     {
-        $delegationCount = (int) DB::table('ipa_delegation')->count();
-        $taskCount = (int) DB::table('ipa_task')->count();
-        $eventCount = (int) DB::table('ipa_event')->count();
+        $user = auth()->user();
+        if (!$user) {
+            return [];
+        }
+
+        $isAdminOrDirector = $user->hasRole(['ADMIN', 'DIRECTOR']);
+        $isManager = $user->hasRole('MANAGER') && !$isAdminOrDirector;
+        $isStaff = $user->hasRole('STAFF') && !$isAdminOrDirector && !$isManager;
+
+        // --- DELEGATION QUERY ---
+        $delegationBaseQuery = DB::table('ipa_delegation');
+        if ($isStaff) {
+            $delegationBaseQuery->where('owner_user_id', $user->id);
+        } elseif ($isManager) {
+            $delegationBaseQuery->where('host_unit_id', $user->primary_unit_id);
+        }
+
+        // --- TASK QUERY ---
+        $taskBaseQuery = DB::table('ipa_task as task');
+        if ($isStaff) {
+            $taskBaseQuery->where(function ($q) use ($user) {
+                $q->where('task.created_by', $user->id)
+                  ->orWhereExists(function ($sub) use ($user) {
+                      $sub->select(DB::raw(1))
+                          ->from('ipa_task_assignee')
+                          ->whereColumn('task_id', 'task.id')
+                          ->where('user_id', $user->id);
+                  });
+            });
+        } elseif ($isManager) {
+            $taskBaseQuery->leftJoin('ipa_user as u_task', 'u_task.id', '=', 'task.created_by')
+                ->where(function ($q) use ($user) {
+                    $q->where('u_task.primary_unit_id', $user->primary_unit_id)
+                      ->orWhereExists(function ($sub) use ($user) {
+                          $sub->select(DB::raw(1))
+                              ->from('ipa_task_assignee as ta')
+                              ->join('ipa_user as ua', 'ua.id', '=', 'ta.user_id')
+                              ->whereColumn('ta.task_id', 'task.id')
+                              ->where('ua.primary_unit_id', $user->primary_unit_id);
+                      });
+                });
+        }
+
+        // --- EVENT QUERY ---
+        $eventBaseQuery = DB::table('ipa_event as event');
+        if ($isStaff) {
+            $eventBaseQuery->where(function ($q) use ($user) {
+                $q->where('event.organizer_user_id', $user->id)
+                  ->orWhere('event.staff_id', $user->id);
+            });
+        } elseif ($isManager) {
+            $eventBaseQuery->leftJoin('ipa_user as u_event', 'u_event.id', '=', 'event.organizer_user_id')
+                ->where('u_event.primary_unit_id', $user->primary_unit_id);
+        }
+
+        $delegationCount = (int) (clone $delegationBaseQuery)->count();
+        $taskCount = (int) (clone $taskBaseQuery)->count();
+        $eventCount = (int) (clone $eventBaseQuery)->count();
+
         $partnerCount = (int) DB::table('ipa_partner')->whereNull('deleted_at')->count();
         $pipelineCount = (int) DB::table('ipa_pipeline_project')->count();
-        $activeDelegationCount = (int) DB::table('ipa_delegation')
+
+        $activeDelegationCount = (int) (clone $delegationBaseQuery)
             ->whereNotIn('status', [3, 4])
             ->count();
-        $upcomingEventCount = (int) DB::table('ipa_event')
-            ->where('start_at', '>=', now())
+
+        $upcomingEventCount = (int) (clone $eventBaseQuery)
+            ->where('event.start_at', '>=', now())
             ->count();
+
         $totalPipelineValue = (float) DB::table('ipa_pipeline_project')->sum('estimated_value');
         $activePipelineValue = (float) DB::table('ipa_pipeline_project as project')
             ->join('ipa_md_pipeline_stage as stage', 'stage.id', '=', 'project.stage_id')
@@ -125,7 +184,7 @@ final class DashboardController extends Controller
             })
             ->all();
 
-        $upcomingEvents = DB::table('ipa_event as event')
+        $upcomingEvents = (clone $eventBaseQuery)
             ->leftJoin('ipa_delegation as delegation', 'delegation.id', '=', 'event.delegation_id')
             ->leftJoin('ipa_location as location', 'location.id', '=', 'event.location_id')
             ->select([
@@ -178,7 +237,7 @@ final class DashboardController extends Controller
             })
             ->all();
 
-        $overdueTasks = DB::table('ipa_task as task')
+        $overdueTasks = (clone $taskBaseQuery)
             ->select([
                 'task.id',
                 'task.title',
@@ -216,25 +275,14 @@ final class DashboardController extends Controller
             'topPartners' => $topPartners,
         ];
 
-        if ($scope !== 'director' && $scope !== 'admin') {
-            return [
-                'stats' => [
-                    'delegations' => $delegationCount,
-                    'tasks' => $taskCount,
-                    'events' => $eventCount,
-                ],
-                'alerts' => $overdueTasks,
-                'overdueTasks' => $overdueTasks,
-            ];
-        }
-
         return [
             'stats' => [
                 'delegations' => $delegationCount,
                 'tasks' => $taskCount,
                 'events' => $eventCount,
             ],
-            'city' => $cityData,
+            'city' => $isAdminOrDirector ? $cityData : null,
+            'unit' => $isManager ? $cityData : null, // Reuse same structure for now
             'alerts' => $overdueTasks,
             'overdueTasks' => $overdueTasks,
         ];

@@ -16,12 +16,14 @@ final class IpaLoginAttemptSeeder extends Seeder
             return;
         }
 
+        $username = DB::table('ipa_user')->value('email') ?? 'admin@ipa.danang.gov.vn';
+
         DB::table('ipa_login_attempt')->insert([
-                'username_or_email' => 'seed_ipa_login_attempt@example.com',
-                'ip_address' => 'ip_address_seed',
-                'is_success' => true,
-                'reason' => 'reason_seed',
-                'attempted_at' => now(),
+            'username_or_email' => $username,
+            'ip_address' => '127.0.0.1',
+            'is_success' => true,
+            'reason' => 'Đăng nhập hợp lệ cho tài khoản quản trị.',
+            'attempted_at' => now()->subMinutes(15),
             'created_at' => now(),
             'updated_at' => now(),
         ]);

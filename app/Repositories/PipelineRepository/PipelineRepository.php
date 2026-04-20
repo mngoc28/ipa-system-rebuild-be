@@ -69,6 +69,24 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
                 'delegation.name',
             ]);
 
+        // Enforce data scoping
+        $user = auth()->user();
+        if ($user) {
+            $isStaff = $user->hasRole('STAFF') && !$user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']);
+            $isManager = $user->hasRole('MANAGER') && !$user->hasRole(['ADMIN', 'DIRECTOR']);
+
+            if ($isStaff) {
+                $query->where('project.owner_user_id', $user->id);
+            } elseif ($isManager) {
+                $query->whereExists(function ($sub) use ($user) {
+                    $sub->select(DB::raw(1))
+                        ->from('ipa_user as u')
+                        ->whereColumn('u.id', 'project.owner_user_id')
+                        ->where('u.primary_unit_id', $user->primary_unit_id);
+                });
+            }
+        }
+
         if ($stageIdentifier !== '') {
             $stageId = $this->resolveStageId($stageIdentifier);
 
@@ -130,6 +148,24 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
                 'delegation.name as delegation_name',
                 'stage.stage_order as stage_order',
             ]);
+
+        // Enforce data scoping
+        $user = auth()->user();
+        if ($user) {
+            $isStaff = $user->hasRole('STAFF') && !$user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']);
+            $isManager = $user->hasRole('MANAGER') && !$user->hasRole(['ADMIN', 'DIRECTOR']);
+
+            if ($isStaff) {
+                $projectQuery->where('project.owner_user_id', $user->id);
+            } elseif ($isManager) {
+                $projectQuery->whereExists(function ($sub) use ($user) {
+                    $sub->select(DB::raw(1))
+                        ->from('ipa_user as u')
+                        ->whereColumn('u.id', 'project.owner_user_id')
+                        ->where('u.primary_unit_id', $user->primary_unit_id);
+                });
+            }
+        }
 
         $projects = $projectQuery->get();
 
@@ -197,7 +233,9 @@ final class PipelineRepository extends BaseRepository implements PipelineReposit
         $activeProjects = $projects->filter(static fn (object $project): bool => (int) $project->stage_order < 5)->count();
         $closedWonProjects = $projects->filter(static fn (object $project): bool => (int) $project->stage_order === 5)->count();
         $totalValue = (float) $projects->sum(fn (object $project): float => (float) ($project->estimated_value ?? 0));
-        $activeValue = (float) $projects->filter(static fn (object $project): bool => (int) $project->stage_order < 5)->sum(fn (object $project): float => (float) ($project->estimated_value ?? 0));
+        $activeValue = (float) $projects
+            ->filter(static fn (object $project): bool => (int) $project->stage_order < 5)
+            ->sum(fn (object $project): float => (float) ($project->estimated_value ?? 0));
         $averageProbability = $totalProjects > 0
             ? round($projects->avg(fn (object $project): float => (float) ($project->success_probability ?? 0)), 1)
             : 0.0;

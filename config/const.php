@@ -29,9 +29,10 @@ return [
     'DECIMAL_PRECISION'             => 2,
     'TIME_TOKEN_CHECK_VERIFY_EMAIL' => 60,
     'ROLES'                         => [
-        'ADMIN'   => 'admin',
-        'PARTNER' => 'partner',
-        'USER'    => 'user',
+        'ADMIN'    => 'ADMIN',
+        'DIRECTOR' => 'DIRECTOR',
+        'MANAGER'  => 'MANAGER',
+        'STAFF'    => 'STAFF',
     ],
     'CLOUDINARY_MAX_IMAGE_SIZE' => 10 * 1024 * 1024,
     'CLOUDINARY_MAX_IMAGES' => 10,

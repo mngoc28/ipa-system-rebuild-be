@@ -12,7 +12,7 @@ use Throwable;
 final class TeamService
 {
     public function __construct(
-        private readonly TeamRepositoryInterface $teamRepository,
+        private TeamRepositoryInterface $teamRepository,
     ) {
     }
 

@@ -6,23 +6,27 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaMdDelegationTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_md_delegation_type')->exists()) {
-            return;
-        }
+        $rows = [
+            ['code' => 'INBOUND', 'name_vi' => 'Đón đoàn', 'sort_order' => 1],
+            ['code' => 'OUTBOUND', 'name_vi' => 'Đi xúc tiến', 'sort_order' => 2],
+        ];
 
-        DB::table('ipa_md_delegation_type')->insert([
-                'code' => 'IPA_MD_DELEGATION_TYPE_CODE',
-                'name_vi' => 'name_vi_seed',
-                'is_active' => true,
-                'sort_order' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        foreach ($rows as $row) {
+            DB::table('ipa_md_delegation_type')->updateOrInsert(
+                ['code' => $row['code']],
+                [
+                    'name_vi' => $row['name_vi'],
+                    'is_active' => true,
+                    'sort_order' => $row['sort_order'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
     }
 }

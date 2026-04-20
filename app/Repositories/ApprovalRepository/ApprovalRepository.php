@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 final class ApprovalRepository implements ApprovalRepositoryInterface
 {
-    public function __construct(private readonly ApprovalRequest $model)
+    public function __construct(private ApprovalRequest $model)
     {
     }
 
@@ -150,6 +150,22 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
                 'changed_at' => now(),
             ]);
 
+            // Trigger notification to requester
+            try {
+                $statusText = $newStatus === 1 ? 'được phê duyệt' : 'bị từ chối';
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->notify([
+                    'notification_type_id' => 2, // approval
+                    'title' => "Yêu cầu {$approvalRequest->request_type} {$statusText}",
+                    'body' => "Yêu cầu phê duyệt của bạn cho \"{$approvalRequest->request_type}\" đã {$statusText}.",
+                    'ref_table' => $approvalRequest->ref_table,
+                    'ref_id' => $approvalRequest->ref_id,
+                    'severity' => $newStatus === 1 ? 1 : 2,
+                ], (int) $approvalRequest->requester_user_id);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send approval decision notification: ' . $e->getMessage());
+            }
+
             return $this->getById($approvalRequest->id);
         });
     }
@@ -235,5 +251,4 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
             default => 'PENDING',
         };
     }
-
 }

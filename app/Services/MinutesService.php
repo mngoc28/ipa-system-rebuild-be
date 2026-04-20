@@ -12,7 +12,7 @@ use Throwable;
 final class MinutesService
 {
     public function __construct(
-        private readonly MinutesRepositoryInterface $minutesRepository,
+        private MinutesRepositoryInterface $minutesRepository,
     ) {
     }
 

@@ -4,68 +4,72 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\AdminUser;
+use App\Models\Delegation;
+use App\Models\Event;
+use App\Models\Task;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 
 final class IpaTaskSeeder extends Seeder
 {
     public function run(): void
     {
-        $adminId = DB::table('ipa_user')->where('username', 'admin')->value('id') 
-                   ?? DB::table('ipa_user')->where('username', 'admin_seed')->value('id') 
-                   ?? 1;
+        if (DB::table('ipa_task')->exists()) {
+            return;
+        }
 
-        $tasks = [
-            [
-                'title' => 'Rà soát hồ sơ đối tác Samsung',
-                'description' => 'Kiểm tra tính pháp lý của các giấy tờ liên quan.',
-                'status' => 0, // Pending
-                'priority' => 2, // High
-                'due_at' => now()->addDays(3),
-                'created_by' => $adminId,
-            ],
-            [
-                'title' => 'Chuẩn bị nội dung buổi làm việc với Toyota',
-                'description' => 'Soạn thảo biên bản ghi nhớ hợp tác mảng xe điện.',
-                'status' => 1, // In Progress
-                'priority' => 2, // High
-                'due_at' => now()->addDays(5),
-                'created_by' => $adminId,
-            ],
-            [
-                'title' => 'Cập nhật danh sách khu công nghiệp Đà Nẵng',
-                'description' => 'Bổ sung các diện tích còn trống trong năm 2026.',
-                'status' => 2, // Completed
-                'priority' => 1, // Normal
-                'due_at' => now()->subDays(1),
-                'created_by' => $adminId,
-            ],
-            [
-                'title' => 'Gửi email phản hồi cho Intel',
-                'description' => 'Trả lời về các câu hỏi chính sách ưu đãi đầu tư.',
-                'status' => 0, // Pending
-                'priority' => 3, // Urgent
-                'due_at' => now()->addHours(4),
-                'created_by' => $adminId,
-            ],
-            [
-                'title' => 'Lên lịch họp hội đồng thành phố',
-                'description' => 'Họp bàn về dự án khu trung tâm tài chính.',
-                'status' => 0, // Pending
-                'priority' => 2, // High
-                'due_at' => now()->addDays(7),
-                'created_by' => $adminId,
-            ],
+        $delegations = Delegation::orderBy('id')->get();
+        $eventMap = Event::orderBy('id')->get()->groupBy('delegation_id');
+        $userIds = AdminUser::orderBy('id')->pluck('id')->all();
+
+        if ($delegations->isEmpty() || $userIds === []) {
+            return;
+        }
+
+        $taskTemplates = [
+            'Rà soát hồ sơ nhà đầu tư',
+            'Soạn thư mời làm việc',
+            'Cập nhật tiến độ sau cuộc họp',
+            'Bổ sung tài liệu thuyết minh',
+            'Gửi email xác nhận lịch hẹn',
+            'Chuẩn bị nội dung trình bày',
+            'Theo dõi phản hồi đối tác',
+            'Lập biên bản họp',
+            'Cập nhật dashboard tiến độ',
         ];
 
-        foreach ($tasks as $task) {
-            DB::table('ipa_task')->updateOrInsert(
-                ['title' => $task['title']],
-                array_merge($task, [
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ])
-            );
+        $overdueTarget = 11;
+        $taskIndex = 0;
+
+        foreach ($delegations as $delegationIndex => $delegation) {
+            for ($index = 0; $index < 9; $index++) {
+                $isOverdue = $taskIndex < $overdueTarget;
+                $dueAt = $isOverdue
+                    ? Carbon::now()->subDays(1 + $taskIndex)
+                    : Carbon::now()->addDays(2 + $index + $delegationIndex);
+
+                $status = $isOverdue ? ($taskIndex % 2 === 0 ? 0 : 1) : ($index % 3);
+                $eventIds = $eventMap[$delegation->id] ?? collect();
+                $eventId = $eventIds->isNotEmpty() && $index % 2 === 0
+                    ? $eventIds->values()[$index % $eventIds->count()]->id
+                    : null;
+
+                Task::factory()->create([
+                    'delegation_id' => $delegation->id,
+                    'event_id' => $eventId,
+                    'title' => $taskTemplates[($delegationIndex + $index) % count($taskTemplates)] . ' - ' . $delegation->code,
+                    'description' => 'Công việc phục vụ ' . $delegation->name . '.',
+                    'status' => $status,
+                    'priority' => ($index % 3) + 1,
+                    'due_at' => $dueAt,
+                    'is_overdue_cache' => $isOverdue,
+                    'created_by' => $userIds[($delegationIndex + $index) % count($userIds)],
+                ]);
+
+                $taskIndex++;
+            }
         }
     }
 }

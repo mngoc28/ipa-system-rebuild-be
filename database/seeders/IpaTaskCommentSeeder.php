@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\AdminUser;
+use App\Models\Task;
+use App\Models\TaskComment;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaTaskCommentSeeder extends Seeder
 {
@@ -16,12 +18,21 @@ final class IpaTaskCommentSeeder extends Seeder
             return;
         }
 
-        DB::table('ipa_task_comment')->insert([
-                'task_id' => DB::table('ipa_task')->value('id'),
-                'commenter_user_id' => DB::table('ipa_user')->value('id'),
-                'comment_text' => 'comment_text seed text',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $taskRows = Task::orderBy('id')->get();
+        $userIds = AdminUser::orderBy('id')->pluck('id')->all();
+
+        if ($taskRows->isEmpty() || $userIds === []) {
+            return;
+        }
+
+        foreach ($taskRows as $index => $task) {
+            for ($commentIndex = 0; $commentIndex < 2; $commentIndex++) {
+                TaskComment::factory()->create([
+                    'task_id' => $task->id,
+                    'commenter_user_id' => $userIds[($index + $commentIndex) % count($userIds)],
+                    'comment_text' => ($commentIndex === 0 ? 'Đã cập nhật tiến độ cho ' : 'Tiếp tục theo dõi ') . $task->title . '.',
+                ]);
+            }
+        }
     }
 }

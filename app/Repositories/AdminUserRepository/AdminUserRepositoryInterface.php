@@ -18,4 +18,8 @@ interface AdminUserRepositoryInterface extends RepositoryInterface
     public function updateUser(string $userId, array $attributes): ?array;
 
     public function lockUser(string $userId, bool $locked): ?array;
+
+    public function getIdsByRoleAndUnit(string $roleCode, int $unitId): array;
+
+    public function updateAvatar(string $userId, string $path): ?array;
 }

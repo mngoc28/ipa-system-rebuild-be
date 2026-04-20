@@ -27,4 +27,35 @@ final class Task extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    public function creator()
+    {
+        return $this->belongsTo(AdminUser::class, 'created_by');
+    }
+
+    public function assignees()
+    {
+        return $this->belongsToMany(AdminUser::class, 'ipa_task_assignee', 'task_id', 'user_id')
+            ->withTimestamps();
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(TaskComment::class, 'task_id')->orderBy('created_at', 'desc');
+    }
+
+    public function attachments()
+    {
+        return $this->hasMany(TaskAttachment::class, 'task_id');
+    }
+
+    public function delegation()
+    {
+        return $this->belongsTo(Delegation::class, 'delegation_id');
+    }
+
+    public function event()
+    {
+        return $this->belongsTo(Event::class, 'event_id');
+    }
 }

@@ -28,7 +28,7 @@ final class MasterDataValidation
             ['domain' => $domain, 'id' => $id],
             [
                 'domain' => ['required', 'string', 'in:' . implode(',', $this->domains())],
-                'id' => ['required', 'string', 'exists:master_data_items,id'],
+                'id' => ['required', 'string'], // Bypassing hardcoded table check for dynamic models
             ]
         );
     }
@@ -54,8 +54,8 @@ final class MasterDataValidation
             array_merge($request->all(), ['domain' => $domain, 'id' => $id]),
             [
                 'domain' => ['required', 'string', 'in:' . implode(',', $this->domains())],
-                'id' => ['required', 'string', 'exists:master_data_items,id'],
-                'code' => ['sometimes', 'string', 'max:100', 'unique:master_data_items,code,' . $id . ',id,domain,' . $domain],
+                'id' => ['required', 'string'], // Bypassing hardcoded table check for dynamic models
+                'code' => ['sometimes', 'string', 'max:100'], // Relaxing unique check for dynamic models
                 'name_vi' => ['sometimes', 'string', 'max:255'],
                 'name_en' => ['nullable', 'string', 'max:255'],
                 'sort_order' => ['sometimes', 'integer', 'min:0'],

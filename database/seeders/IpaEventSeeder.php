@@ -4,62 +4,57 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\AdminUser;
+use App\Models\Event;
+use App\Models\Location;
+use App\Models\Delegation;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Carbon;
 
 final class IpaEventSeeder extends Seeder
 {
     public function run(): void
     {
-        $delegationId = DB::table('ipa_delegation')->value('id');
-        $locationId = DB::table('ipa_location')->value('id');
-        $organizerId = DB::table('ipa_user')->where('username', 'staff')->value('id') ?? DB::table('ipa_user')->value('id');
+        if (DB::table('ipa_event')->exists()) {
+            return;
+        }
 
-        $events = [
-            [
-                'title' => 'Làm việc với Samsung Electronics',
-                'description' => 'Buổi trao đổi về kế hoạch mở rộng đầu tư năm 2026.',
-                'event_type' => 1,
-                'status' => 0,
-                'start_at' => now()->addDay()->setTime(9, 0),
-                'end_at' => now()->addDay()->setTime(10, 30),
-            ],
-            [
-                'title' => 'Thăm khu công nghệ cao',
-                'description' => 'Khảo sát hạ tầng cùng đoàn công tác.',
-                'event_type' => 2,
-                'status' => 1,
-                'start_at' => now()->addDays(2)->setTime(13, 30),
-                'end_at' => now()->addDays(2)->setTime(15, 0),
-            ],
-            [
-                'title' => 'Hội thảo xúc tiến đầu tư',
-                'description' => 'Sự kiện giới thiệu chính sách và ưu đãi đầu tư.',
-                'event_type' => 3,
-                'status' => 0,
-                'start_at' => now()->addDays(4)->setTime(8, 30),
-                'end_at' => now()->addDays(4)->setTime(11, 0),
-            ],
+        $delegations = Delegation::orderBy('id')->get();
+        $locationIds = Location::orderBy('id')->pluck('id')->all();
+        $organizerIds = AdminUser::orderBy('id')->pluck('id')->all();
+
+        if ($delegations->isEmpty() || $locationIds === [] || $organizerIds === []) {
+            return;
+        }
+
+        $eventTemplates = [
+            'Làm việc với nhà đầu tư',
+            'Khảo sát cơ sở hạ tầng',
+            'Tọa đàm chính sách ưu đãi',
+            'Tham quan địa điểm đầu tư',
+            'Gặp gỡ đối tác chiến lược',
         ];
 
-        foreach ($events as $event) {
-            DB::table('ipa_event')->updateOrInsert(
-                ['title' => $event['title']],
-                [
-                    'delegation_id' => $delegationId,
-                    'title' => $event['title'],
-                    'description' => $event['description'],
-                    'event_type' => $event['event_type'],
-                    'status' => $event['status'],
-                    'start_at' => $event['start_at'],
-                    'end_at' => $event['end_at'],
-                    'location_id' => $locationId,
-                    'organizer_user_id' => $organizerId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]
-            );
+        foreach ($delegations as $delegationIndex => $delegation) {
+            for ($eventIndex = 0; $eventIndex < 3; $eventIndex++) {
+                $startAt = Carbon::parse($delegation->start_date)
+                    ->addHours(9 + ($eventIndex * 2))
+                    ->addDays($eventIndex);
+                $endAt = (clone $startAt)->addMinutes(90);
+
+                Event::factory()->create([
+                    'delegation_id' => $delegation->id,
+                    'title' => $eventTemplates[($delegationIndex + $eventIndex) % count($eventTemplates)] . ' - ' . $delegation->code,
+                    'description' => 'Phiên làm việc thuộc ' . $delegation->name . ' tại Đà Nẵng.',
+                    'event_type' => (($eventIndex + $delegationIndex) % 4) + 1,
+                    'status' => $startAt->isPast() ? 1 : 0,
+                    'start_at' => $startAt,
+                    'end_at' => $endAt,
+                    'location_id' => $locationIds[($delegationIndex + $eventIndex) % count($locationIds)],
+                    'organizer_user_id' => $organizerIds[($delegationIndex + $eventIndex) % count($organizerIds)],
+                ]);
+            }
         }
     }
 }

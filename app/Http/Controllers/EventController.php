@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\DB;
 final class EventController extends Controller
 {
     public function __construct(
-        private readonly EventService $eventService,
-        private readonly EventValidation $eventValidation,
+        private EventService $eventService,
+        private EventValidation $eventValidation,
     ) {
     }
 
@@ -27,7 +27,7 @@ final class EventController extends Controller
             return $this->validateError($validator->errors(), 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
         }
 
-        $result = $this->eventService->getAll($request);
+        $result = $this->eventService->getAll($request, $this->resolveUserId($request));
 
         if (! $result['success']) {
             return $this->errorResponse($result['message'], 'FETCH_FAILED', HttpStatus::BAD_REQUEST);

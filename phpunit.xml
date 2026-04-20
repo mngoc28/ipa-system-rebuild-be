@@ -37,5 +37,6 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="JWT_SECRET" value="7H4vR9fK2mN8xP5zQ1wS3eD6cT9bU2vX5yG8hJ1kL4mN7pQ0rS3uV6xY9zB2"/>
     </php>
 </phpunit>

@@ -5,13 +5,25 @@ declare(strict_types=1);
 namespace App\Repositories\MasterDataRepository;
 
 use App\Models\MasterData;
+use App\Models\Sector;
+use App\Models\Location;
 use App\Repositories\BaseRepository;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 final class MasterDataRepository extends BaseRepository implements MasterDataRepositoryInterface
 {
+    private function getTargetBuilder(string $domain): Builder
+    {
+        return match ($domain) {
+            'sector' => (new Sector())->newQuery(),
+            'location' => (new Location())->newQuery(),
+            default => (new MasterData())->newQuery(),
+        };
+    }
+
     public function getModel(): string
     {
         return MasterData::class;
@@ -24,45 +36,37 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
 
     public function getAllOrSearch(string $domain, Request $request): array
     {
-        $query = $this->model->newQuery()->where('domain', $domain);
+        $query = $this->getTargetBuilder($domain);
+
+        if ($domain !== 'sector' && $domain !== 'location') {
+            $query->where('domain', $domain);
+        }
 
         if ($request->filled('q')) {
             $keyword = trim((string) $request->input('q'));
 
-            $query->where(function ($builder) use ($keyword): void {
-                $builder->where('code', 'like', '%' . $keyword . '%')
-                    ->orWhere('name_vi', 'like', '%' . $keyword . '%')
-                    ->orWhere('name_en', 'like', '%' . $keyword . '%');
+            $query->where(function ($builder) use ($keyword, $domain): void {
+                if ($domain === 'location') {
+                    $builder->where('name', 'like', '%' . $keyword . '%');
+                } else {
+                    $builder->where('code', 'like', '%' . $keyword . '%')
+                        ->orWhere('name_vi', 'like', '%' . $keyword . '%')
+                        ->orWhere('name_en', 'like', '%' . $keyword . '%');
+                }
             });
         }
 
-        $sortField = (string) $request->input('sort_field', 'sort_order');
+        $defaultSort = match ($domain) {
+            'location' => 'name',
+            'sector' => 'id',
+            default => 'sort_order'
+        };
+        $sortField = (string) $request->input('sort_field', $defaultSort);
         $sortDirection = strtolower((string) $request->input('sort_direction', 'asc'));
-        $allowedSortFields = ['code', 'name_vi', 'name_en', 'sort_order', 'created_at', 'updated_at'];
-
-        if (! in_array($sortField, $allowedSortFields, true)) {
-            $sortField = 'sort_order';
-        }
-
-        if (! in_array($sortDirection, ['asc', 'desc'], true)) {
-            $sortDirection = 'asc';
-        }
 
         $items = $query->orderBy($sortField, $sortDirection)
-            ->orderBy('name_vi', 'asc')
             ->get()
-            ->map(static function (MasterData $item): array {
-                return [
-                    'id' => $item->id,
-                    'code' => $item->code,
-                    'name_vi' => $item->name_vi,
-                    'name_en' => $item->name_en,
-                    'sort_order' => $item->sort_order,
-                    'is_active' => $item->is_active,
-                    'created_at' => optional($item->created_at)?->toIso8601String(),
-                    'updated_at' => optional($item->updated_at)?->toIso8601String(),
-                ];
-            })
+            ->map(fn ($item): array => $this->normalize($item, $domain))
             ->all();
 
         return [
@@ -137,15 +141,28 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
         return (bool) $record->delete();
     }
 
-    private function normalize(MasterData $item): array
+    private function normalize($item, string $domain = ''): array
     {
+        if ($domain === 'location') {
+            return [
+                'id' => $item->id,
+                'code' => $item->id, // Location might not have code, use id as fallback
+                'name_vi' => $item->name,
+                'name_en' => $item->name,
+                'sort_order' => 0,
+                'is_active' => true,
+                'created_at' => optional($item->created_at)?->toIso8601String(),
+                'updated_at' => optional($item->updated_at)?->toIso8601String(),
+            ];
+        }
+
         return [
             'id' => $item->id,
-            'code' => $item->code,
-            'name_vi' => $item->name_vi,
-            'name_en' => $item->name_en,
-            'sort_order' => $item->sort_order,
-            'is_active' => $item->is_active,
+            'code' => $item->code ?? '',
+            'name_vi' => $item->name_vi ?? '',
+            'name_en' => $item->name_en ?? '',
+            'sort_order' => $item->sort_order ?? 0,
+            'is_active' => $item->is_active ?? true,
             'created_at' => optional($item->created_at)?->toIso8601String(),
             'updated_at' => optional($item->updated_at)?->toIso8601String(),
         ];

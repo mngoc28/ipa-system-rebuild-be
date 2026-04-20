@@ -6,23 +6,28 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaMdTaskStatusSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_md_task_status')->exists()) {
-            return;
-        }
+        $rows = [
+            ['code' => 'TODO', 'name_vi' => 'Cần làm', 'is_terminal' => false],
+            ['code' => 'IN_PROGRESS', 'name_vi' => 'Đang thực hiện', 'is_terminal' => false],
+            ['code' => 'DONE', 'name_vi' => 'Hoàn thành', 'is_terminal' => true],
+        ];
 
-        DB::table('ipa_md_task_status')->insert([
-                'code' => 'IPA_MD_TASK_STATUS_CODE',
-                'name_vi' => 'name_vi_seed',
-                'is_terminal' => true,
-                'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        foreach ($rows as $row) {
+            DB::table('ipa_md_task_status')->updateOrInsert(
+                ['code' => $row['code']],
+                [
+                    'name_vi' => $row['name_vi'],
+                    'is_terminal' => $row['is_terminal'],
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
     }
 }

@@ -290,12 +290,20 @@ final class MinutesRepository extends BaseRepository implements MinutesRepositor
             }
 
             $versionId = $this->nullableInteger(Arr::get($attributes, 'versionId', Arr::get($attributes, 'version_id')));
-            if ($versionId !== null && ! DB::table('ipa_minutes_version')->where('id', $versionId)->where('minutes_id', (int) $minutes->id)->exists()) {
+            $versionExists = DB::table('ipa_minutes_version')
+                ->where('id', $versionId)
+                ->where('minutes_id', (int) $minutes->id)
+                ->exists();
+            if ($versionId !== null && ! $versionExists) {
                 return null;
             }
 
             $parentCommentId = $this->nullableInteger(Arr::get($attributes, 'parentCommentId', Arr::get($attributes, 'parent_comment_id')));
-            if ($parentCommentId !== null && ! DB::table('ipa_minutes_comment')->where('id', $parentCommentId)->where('minutes_id', (int) $minutes->id)->exists()) {
+            $parentExists = DB::table('ipa_minutes_comment')
+                ->where('id', $parentCommentId)
+                ->where('minutes_id', (int) $minutes->id)
+                ->exists();
+            if ($parentCommentId !== null && ! $parentExists) {
                 return null;
             }
 

@@ -12,7 +12,7 @@ use Throwable;
 final class PipelineService
 {
     public function __construct(
-        private readonly PipelineRepositoryInterface $pipelineRepository,
+        private PipelineRepositoryInterface $pipelineRepository,
     ) {
     }
 

@@ -36,7 +36,14 @@ final class TeamRepository implements TeamRepositoryInterface
     {
         $unitId = $request->filled('unitId') ? (int) $request->input('unitId') : null;
         $page = max(1, (int) $request->integer('page', 1));
-        $pageSize = max(1, min(100, (int) $request->integer('pageSize', 8)));
+        $pageSize = max(1, min(100, (int) $request->integer('pageSize', 100)));
+        $search = $request->input('search');
+
+        // Force unit filtering for Manager/Staff roles if unitId is not provided
+        $currentUser = auth()->user();
+        if ($unitId === null && $currentUser && !$currentUser->hasRole(['ADMIN', 'DIRECTOR'])) {
+            $unitId = $currentUser->primary_unit_id;
+        }
 
         $taskStatsSubquery = DB::table('ipa_task_assignee as ta')
             ->leftJoin('ipa_task as t', 't.id', '=', 'ta.task_id')
@@ -62,12 +69,17 @@ final class TeamRepository implements TeamRepositoryInterface
                 'ou.unit_name',
                 DB::raw('COALESCE(task_stats.total_tasks, 0) as total_tasks'),
                 DB::raw('COALESCE(task_stats.overdue_tasks, 0) as overdue_tasks'),
-            ])
-            ->orderBy('u.full_name');
+            ]);
+
+        if ($search) {
+            $baseQuery->where('u.full_name', 'like', '%' . $search . '%');
+        }
 
         if ($unitId !== null) {
-            $baseQuery->where('ua.unit_id', $unitId);
+            $baseQuery->where('u.primary_unit_id', $unitId);
         }
+
+        $baseQuery->orderBy('u.full_name');
 
         $allRows = (clone $baseQuery)
             ->orderBy('u.full_name')
@@ -95,7 +107,11 @@ final class TeamRepository implements TeamRepositoryInterface
                 'tasks' => $totalTasks,
                 'performance' => $performance,
                 'unitName' => (string) ($row->unit_name ?? ''),
-                'avatarUrl' => $row->avatar_url ?: null,
+                'avatarUrl' => $row->avatar_url
+                    ? (str_starts_with($row->avatar_url, 'http')
+                        ? $row->avatar_url
+                        : rtrim((string) config('app.url'), '/') . '/storage/' . $row->avatar_url)
+                    : null,
             ];
         })->values()->all();
 
@@ -211,7 +227,11 @@ final class TeamRepository implements TeamRepositoryInterface
             'tasks' => $totalTasks,
             'performance' => max(0, min(100, 100 - ($overdueTasks * 15) - max(0, $totalTasks - $overdueTasks))),
             'unitName' => (string) ($row->unit_name ?? ''),
-            'avatarUrl' => $row->avatar_url ?: null,
+            'avatarUrl' => $row->avatar_url
+                ? (str_starts_with($row->avatar_url, 'http')
+                    ? $row->avatar_url
+                    : rtrim((string) config('app.url'), '/') . '/storage/' . $row->avatar_url)
+                : null,
         ];
     }
 

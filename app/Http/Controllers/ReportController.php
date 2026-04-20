@@ -13,8 +13,8 @@ use Illuminate\Http\Request;
 final class ReportController extends Controller
 {
     public function __construct(
-        private readonly ReportService $reportService,
-        private readonly ReportValidation $reportValidation,
+        private ReportService $reportService,
+        private ReportValidation $reportValidation,
     ) {
     }
 

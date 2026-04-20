@@ -6,23 +6,28 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaMdPrioritySeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_md_priority')->exists()) {
-            return;
-        }
+        $rows = [
+            ['code' => 'LOW', 'name_vi' => 'Thấp', 'weight' => 1],
+            ['code' => 'NORMAL', 'name_vi' => 'Bình thường', 'weight' => 2],
+            ['code' => 'HIGH', 'name_vi' => 'Cao', 'weight' => 3],
+        ];
 
-        DB::table('ipa_md_priority')->insert([
-                'code' => 'IPA_MD_PRIORITY_CODE',
-                'name_vi' => 'name_vi_seed',
-                'weight' => 1,
-                'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        foreach ($rows as $row) {
+            DB::table('ipa_md_priority')->updateOrInsert(
+                ['code' => $row['code']],
+                [
+                    'name_vi' => $row['name_vi'],
+                    'weight' => $row['weight'],
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
     }
 }

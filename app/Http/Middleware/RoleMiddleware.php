@@ -13,19 +13,17 @@ class RoleMiddleware
     {
         $user = Auth::guard('api')->user();
 
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => __('auth.unauthorized')], HttpStatus::UNAUTHORIZED->value);
+        }
+
         $allowed = [];
         foreach ($roles as $r) {
             $allowed = array_merge($allowed, explode(',', $r));
         }
 
-        if (! in_array($user->role, $allowed)) {
-            return response()->json(
-                [
-                    'status'  => 'error',
-                    'message' => __('auth.unauthorized'),
-                ],
-                HttpStatus::UNAUTHORIZED->value
-            );
+        if (!$user->hasRole($allowed)) {
+            return response()->json(['status' => 'error', 'message' => __('auth.forbidden')], HttpStatus::FORBIDDEN->value);
         }
 
         return $next($request);

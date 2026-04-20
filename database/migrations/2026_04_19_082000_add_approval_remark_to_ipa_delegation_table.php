@@ -1,0 +1,34 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up(): void
+    {
+        Schema::table('ipa_delegation', function (Blueprint $table) {
+            if (!Schema::hasColumn('ipa_delegation', 'approval_remark')) {
+                $table->text('approval_remark')->nullable()->after('description');
+            }
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down(): void
+    {
+        Schema::table('ipa_delegation', function (Blueprint $table) {
+            $table->dropColumn('approval_remark');
+        });
+    }
+};

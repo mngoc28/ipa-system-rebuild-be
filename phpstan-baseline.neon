@@ -1,0 +1,186 @@
+parameters:
+	ignoreErrors:
+		-
+			message: "#^Method App\\\\Exceptions\\\\Handler\\:\\:render\\(\\) should return Illuminate\\\\Http\\\\JsonResponse but returns Symfony\\\\Component\\\\HttpFoundation\\\\Response\\.$#"
+			count: 1
+			path: app/Exceptions/Handler.php
+
+		-
+			message: "#^Call to an undefined method Cloudinary\\\\Api\\\\ApiResponse\\:\\:getSecurePath\\(\\)\\.$#"
+			count: 1
+			path: app/Http/Controllers/AdminUserController.php
+
+		-
+			message: "#^Parameter \\#2 \\$default of method Illuminate\\\\Http\\\\Request\\:\\:header\\(\\) expects array\\<string, string\\>\\|string\\|null, int given\\.$#"
+			count: 1
+			path: app/Http/Controllers/ApprovalController.php
+
+		-
+			message: "#^Parameter \\#1 \\$forceForever of static method Tymon\\\\JWTAuth\\\\JWT\\:\\:invalidate\\(\\) expects bool, Tymon\\\\JWTAuth\\\\Token\\|null given\\.$#"
+			count: 1
+			path: app/Http/Controllers/Auth/AuthController.php
+
+		-
+			message: "#^Relation 'roles' is not found in App\\\\Models\\\\AdminUser model\\.$#"
+			count: 1
+			path: app/Http/Controllers/Auth/AuthController.php
+
+		-
+			message: "#^Parameter \\#2 \\$default of method Illuminate\\\\Http\\\\Request\\:\\:header\\(\\) expects array\\<string, string\\>\\|string\\|null, int given\\.$#"
+			count: 1
+			path: app/Http/Controllers/MinutesController.php
+
+		-
+			message: "#^Call to an undefined method Cloudinary\\\\Api\\\\ApiResponse\\:\\:getSecurePath\\(\\)\\.$#"
+			count: 1
+			path: app/Http/Controllers/ProfileController.php
+
+		-
+			message: "#^Negated boolean expression is always false\\.$#"
+			count: 2
+			path: app/Http/Controllers/ProfileController.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$code\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$created_at\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$end_date\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$id\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$max_discount_value\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$min_order_value\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$start_date\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$status\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$type\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$updated_at\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$usage_limit\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$used_count\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\CouponResource\\:\\:\\$value\\.$#"
+			count: 1
+			path: app/Http/Resources/CouponResource.php
+
+		-
+			message: "#^PHPDoc type array of property App\\\\Models\\\\AdminUser\\:\\:\\$appends is not covariant with PHPDoc type array\\<int, string\\> of overridden property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$appends\\.$#"
+			count: 1
+			path: app/Models/AdminUser.php
+
+		-
+			message: "#^PHPDoc type array of property App\\\\Providers\\\\AuthServiceProvider\\:\\:\\$policies is not covariant with PHPDoc type array\\<class\\-string, class\\-string\\> of overridden property Illuminate\\\\Foundation\\\\Support\\\\Providers\\\\AuthServiceProvider\\:\\:\\$policies\\.$#"
+			count: 1
+			path: app/Providers/AuthServiceProvider.php
+
+		-
+			message: "#^Parameter \\#1 \\$callback of method Illuminate\\\\Database\\\\Eloquent\\\\Collection\\<\\(int\\|string\\),Illuminate\\\\Database\\\\Eloquent\\\\Model\\>\\:\\:map\\(\\) expects callable\\(Illuminate\\\\Database\\\\Eloquent\\\\Model, int\\|string\\)\\: array\\{decision\\: string, decisionNote\\: null, decidedAt\\: mixed, deciderUserId\\: string, oldStatus\\: string, newStatus\\: string\\}, Closure\\(App\\\\Models\\\\ApprovalHistory\\)\\: array\\{decision\\: 'APPROVE'\\|'PENDING'\\|'REJECT', decisionNote\\: null, decidedAt\\: mixed, deciderUserId\\: lowercase\\-string&numeric\\-string&uppercase\\-string, oldStatus\\: string, newStatus\\: string\\} given\\.$#"
+			count: 1
+			path: app/Repositories/ApprovalRepository/ApprovalRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$callback of method Illuminate\\\\Database\\\\Eloquent\\\\Collection\\<\\(int\\|string\\),Illuminate\\\\Database\\\\Eloquent\\\\Model\\>\\:\\:map\\(\\) expects callable\\(Illuminate\\\\Database\\\\Eloquent\\\\Model, int\\|string\\)\\: array\\{id\\: string, status\\: string, approverId\\: string, stepOrder\\: int, decisionNote\\: string\\|null, decidedAt\\: mixed\\}, Closure\\(App\\\\Models\\\\ApprovalStep\\)\\: array\\{id\\: lowercase\\-string&numeric\\-string&uppercase\\-string, status\\: 'APPROVED'\\|'PENDING'\\|'REJECTED', approverId\\: lowercase\\-string&numeric\\-string&uppercase\\-string, stepOrder\\: int, decisionNote\\: string\\|null, decidedAt\\: mixed\\} given\\.$#"
+			count: 1
+			path: app/Repositories/ApprovalRepository/ApprovalRepository.php
+
+		-
+			message: "#^Strict comparison using \\=\\=\\= between App\\\\Models\\\\ApprovalStep and null will always evaluate to false\\.$#"
+			count: 1
+			path: app/Repositories/ApprovalRepository/ApprovalRepository.php
+
+		-
+			message: "#^Result of \\|\\| is always false\\.$#"
+			count: 1
+			path: app/Repositories/MinutesRepository/MinutesRepository.php
+
+		-
+			message: "#^Strict comparison using \\=\\=\\= between mixed and null will always evaluate to false\\.$#"
+			count: 1
+			path: app/Repositories/MinutesRepository/MinutesRepository.php
+
+		-
+			message: "#^Strict comparison using \\=\\=\\= between mixed~\\(''\\|null\\) and '' will always evaluate to false\\.$#"
+			count: 1
+			path: app/Repositories/MinutesRepository/MinutesRepository.php
+
+		-
+			message: "#^Anonymous function has an unused use \\$reason\\.$#"
+			count: 1
+			path: app/Repositories/PipelineRepository/PipelineRepository.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Models\\\\Task\\:\\:\\$assignees\\.$#"
+			count: 1
+			path: app/Repositories/TaskRepository/TaskRepository.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Models\\\\Task\\:\\:\\$attachments_count\\.$#"
+			count: 1
+			path: app/Repositories/TaskRepository/TaskRepository.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Models\\\\Task\\:\\:\\$comments_count\\.$#"
+			count: 1
+			path: app/Repositories/TaskRepository/TaskRepository.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Models\\\\Task\\:\\:\\$creator\\.$#"
+			count: 1
+			path: app/Repositories/TaskRepository/TaskRepository.php
+
+		-
+			message: "#^Relation 'assignees' is not found in App\\\\Models\\\\Task model\\.$#"
+			count: 3
+			path: app/Repositories/TaskRepository/TaskRepository.php
+
+		-
+			message: "#^Relation 'creator' is not found in App\\\\Models\\\\Task model\\.$#"
+			count: 2
+			path: app/Repositories/TaskRepository/TaskRepository.php
+
+		-
+			message: "#^Method App\\\\Repositories\\\\EventRepository\\\\EventRepositoryInterface\\:\\:getPaginated\\(\\) invoked with 2 parameters, 1 required\\.$#"
+			count: 1
+			path: app/Services/EventService.php

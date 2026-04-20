@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\DB;
 final class PartnerController extends Controller
 {
     public function __construct(
-        private readonly PartnerService $partnerService,
-        private readonly PartnerValidation $partnerValidation,
+        private PartnerService $partnerService,
+        private PartnerValidation $partnerValidation,
     ) {
     }
 

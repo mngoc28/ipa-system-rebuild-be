@@ -13,8 +13,11 @@ class DelegationContact extends Model
 
     protected $fillable = [
         'delegation_id',
-        'contact_id',
-        'role_in_delegation',
+        'partner_contact_id',
+        'name',
+        'role_name',
+        'email',
+        'phone',
         'is_primary',
     ];
 

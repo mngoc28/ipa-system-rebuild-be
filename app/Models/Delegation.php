@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Delegation extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $table = 'ipa_delegation';
 
@@ -26,6 +27,8 @@ class Delegation extends Model
         'participant_count',
         'objective',
         'description',
+        'investment_potential',
+        'approval_remark',
     ];
 
     protected $casts = [
@@ -36,6 +39,26 @@ class Delegation extends Model
         'end_date' => 'date',
         'participant_count' => 'integer',
     ];
+
+    public function country()
+    {
+        return $this->belongsTo(Country::class, 'country_id');
+    }
+
+    public function partners()
+    {
+        return $this->belongsToMany(Partner::class, 'ipa_delegation_partner_link', 'delegation_id', 'partner_id');
+    }
+
+    public function owner()
+    {
+        return $this->belongsTo(AdminUser::class, 'owner_user_id');
+    }
+
+    public function hostUnit()
+    {
+        return $this->belongsTo(OrgUnit::class, 'host_unit_id');
+    }
 
     public function members()
     {
@@ -50,5 +73,30 @@ class Delegation extends Model
     public function outcomes()
     {
         return $this->hasMany(DelegationOutcome::class, 'delegation_id');
+    }
+
+    public function tasks()
+    {
+        return $this->hasMany(Task::class, 'delegation_id');
+    }
+
+    public function sectors()
+    {
+        return $this->belongsToMany(Sector::class, 'ipa_delegation_sector_link', 'delegation_id', 'sector_id');
+    }
+
+    public function contacts()
+    {
+        return $this->hasMany(DelegationContact::class, 'delegation_id');
+    }
+
+    public function checklist()
+    {
+        return $this->hasMany(DelegationChecklist::class, 'delegation_id');
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(DelegationComment::class, 'delegation_id');
     }
 }

@@ -13,7 +13,7 @@ use Throwable;
 final class DocumentService
 {
     public function __construct(
-        private readonly DocumentRepositoryInterface $documentRepository,
+        private DocumentRepositoryInterface $documentRepository,
     ) {
     }
 

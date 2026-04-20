@@ -16,15 +16,17 @@ final class IpaAuthSessionSeeder extends Seeder
             return;
         }
 
+        $userId = DB::table('ipa_user')->value('id');
+
         DB::table('ipa_auth_session')->insert([
-                'user_id' => DB::table('ipa_user')->value('id'),
-                'access_token_jti' => 'access_token_jti_seed',
-                'refresh_token_hash' => 'refresh_token_hash_seed',
-                'ip_address' => 'ip_address_seed',
-                'user_agent' => 'user_agent seed text',
-                'issued_at' => now(),
-                'expires_at' => now(),
-                'revoked_at' => now(),
+            'user_id' => $userId,
+            'access_token_jti' => 'auth-session-jti-0001',
+            'refresh_token_hash' => 'auth-session-refresh-hash-0001',
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'issued_at' => now(),
+            'expires_at' => now()->addDay(),
+            'revoked_at' => now()->addHours(6),
             'created_at' => now(),
             'updated_at' => now(),
         ]);

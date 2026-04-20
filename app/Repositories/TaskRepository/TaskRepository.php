@@ -24,56 +24,115 @@ final class TaskRepository extends BaseRepository implements TaskRepositoryInter
         $status = $request->input('status');
         $priority = $request->input('priority');
 
-        $query = DB::table('ipa_task as t')
-            ->select([
-                't.*',
-                'u.full_name as creator_name',
-            ])
-            ->leftJoin('ipa_user as u', 'u.id', '=', 't.created_by');
+        $query = Task::query()
+            ->with(['assignees:id,full_name,avatar_url', 'creator:id,full_name'])
+            ->withCount(['comments', 'attachments']);
+
+        // Enforce data scoping
+        $user = auth()->user();
+        if ($user) {
+            $isStaff = $user->hasRole('STAFF') && !$user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']);
+            $isManager = $user->hasRole('MANAGER') && !$user->hasRole(['ADMIN', 'DIRECTOR']);
+
+            if ($isStaff) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('created_by', $user->id)
+                      ->orWhereHas('assignees', function ($sub) use ($user) {
+                          $sub->where('user_id', $user->id);
+                      });
+                });
+            } elseif ($isManager) {
+                $query->where(function ($q) use ($user) {
+                    // Created by someone in my unit
+                    $q->whereHas('creator', function ($sub) use ($user) {
+                        $sub->where('primary_unit_id', $user->primary_unit_id);
+                    })
+                    // OR assigned to someone in my unit
+                      ->orWhereHas('assignees', function ($sub) use ($user) {
+                          $sub->where('primary_unit_id', $user->primary_unit_id);
+                      });
+                });
+            }
+        }
 
         if ($search) {
-            $query->where('t.title', 'like', "%{$search}%");
+            $query->where('title', 'like', "%{$search}%");
         }
 
         if ($status !== null && $status !== '') {
-            $query->where('t.status', (int) $status);
+            $query->where('status', (int) $status);
         }
 
         if ($priority !== null && $priority !== '') {
-            $query->where('t.priority', (int) $priority);
+            $query->where('priority', (int) $priority);
         }
 
-        $total = (clone $query)->count();
+        $paginator = $query->orderBy('due_at', 'asc')->paginate($pageSize);
 
-        $rows = $query
-            ->orderBy('t.due_at', 'asc')
-            ->offset(($page - 1) * $pageSize)
-            ->limit($pageSize)
-            ->get();
-
-        $items = $rows->map(function (object $row): array {
+        $items = collect($paginator->items())->map(function (Task $task): array {
             return [
-                'id' => (string) $row->id,
-                'title' => (string) $row->title,
-                'description' => (string) $row->description,
-                'status' => (int) $row->status,
-                'priority' => (int) $row->priority,
-                'dueAt' => (string) $row->due_at,
-                'isOverdue' => (bool) $row->is_overdue_cache,
-                'createdBy' => (int) $row->created_by,
-                'creatorName' => (string) $row->creator_name,
-                'createdAt' => (string) $row->created_at,
+                'id' => (string) $task->id,
+                'title' => (string) $task->title,
+                'description' => (string) $task->description,
+                'status' => (int) $task->status,
+                'priority' => (int) $task->priority,
+                'dueAt' => $task->due_at ? $task->due_at->toIso8601String() : null,
+                'isOverdue' => (bool) $task->is_overdue_cache,
+                'createdBy' => (int) $task->created_by,
+                'creatorName' => $task->creator?->full_name ?? 'N/A',
+                'createdAt' => $task->created_at->toIso8601String(),
+                'assignees' => $task->assignees->map(fn($u) => [
+                    'id' => (int) $u->id,
+                    'name' => (string) $u->full_name,
+                    'avatar' => (string) $u->avatar_url,
+                ])->all(),
+                'commentsCount' => (int) $task->comments_count,
+                'attachmentsCount' => (int) $task->attachments_count,
+                'delegationId' => $task->delegation_id,
+                'eventId' => $task->event_id,
             ];
         })->all();
 
         return [
             'items' => $items,
             'meta' => [
-                'page' => $page,
-                'pageSize' => $pageSize,
-                'total' => $total,
-                'totalPages' => (int) ceil($total / $pageSize),
+                'page' => $paginator->currentPage(),
+                'pageSize' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'totalPages' => $paginator->lastPage(),
             ],
         ];
+    }
+
+    public function create($attributes = [])
+    {
+        return DB::transaction(function () use ($attributes) {
+            $assigneeIds = $attributes['assignee_ids'] ?? [];
+            unset($attributes['assignee_ids']);
+
+            $task = parent::create($attributes);
+
+            if (!empty($assigneeIds)) {
+                $task->assignees()->sync($assigneeIds);
+            }
+
+            return $task->load('assignees');
+        });
+    }
+
+    public function update($id, $attributes = [])
+    {
+        return DB::transaction(function () use ($id, $attributes) {
+            $assigneeIds = $attributes['assignee_ids'] ?? null;
+            unset($attributes['assignee_ids']);
+
+            $task = parent::update($id, $attributes);
+
+            if ($assigneeIds !== null) {
+                $task->assignees()->sync($assigneeIds);
+            }
+
+            return $task->load('assignees');
+        });
     }
 }

@@ -13,8 +13,8 @@ use Illuminate\Http\Request;
 final class TeamController extends Controller
 {
     public function __construct(
-        private readonly TeamService $teamService,
-        private readonly TeamValidation $teamValidation,
+        private TeamService $teamService,
+        private TeamValidation $teamValidation,
     ) {
     }
 

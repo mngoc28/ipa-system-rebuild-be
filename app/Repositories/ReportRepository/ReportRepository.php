@@ -51,8 +51,10 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
     public function summary(): array
     {
         $metricValues = $this->resolveMetricValues();
+        $user = auth()->user();
+        $isStaffOnly = $user && $user->hasRole('STAFF') && !$user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']);
 
-        $recentRuns = DB::table('ipa_report_run as run')
+        $recentRunsQuery = DB::table('ipa_report_run as run')
             ->join('ipa_report_definition as definition', 'definition.id', '=', 'run.report_definition_id')
             ->leftJoin('ipa_file as file', 'file.id', '=', 'run.output_file_id')
             ->select([
@@ -65,7 +67,25 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
                 'definition.report_name',
                 'file.file_name as output_file_name',
                 'file.size_bytes as output_file_size_bytes',
-            ])
+            ]);
+
+        if ($user) {
+            $isStaff = $user->hasRole('STAFF') && !$user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']);
+            $isManager = $user->hasRole('MANAGER') && !$user->hasRole(['ADMIN', 'DIRECTOR']);
+
+            if ($isStaff) {
+                $recentRunsQuery->where('run.run_by', $user->id);
+            } elseif ($isManager) {
+                $recentRunsQuery->whereExists(function ($sub) use ($user) {
+                    $sub->select(DB::raw(1))
+                        ->from('ipa_user as u')
+                        ->whereColumn('u.id', 'run.run_by')
+                        ->where('u.primary_unit_id', $user->primary_unit_id);
+                });
+            }
+        }
+
+        $recentRuns = $recentRunsQuery
             ->orderByDesc('run.started_at')
             ->orderByDesc('run.id')
             ->limit(20)
@@ -85,9 +105,23 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
             })
             ->all();
 
+        $runCountQuery = DB::table('ipa_report_run as run');
+        if ($user) {
+            if ($isStaff) {
+                $runCountQuery->where('run.run_by', $user->id);
+            } elseif ($isManager) {
+                $runCountQuery->whereExists(function ($sub) use ($user) {
+                    $sub->select(DB::raw(1))
+                        ->from('ipa_user as u')
+                        ->whereColumn('u.id', 'run.run_by')
+                        ->where('u.primary_unit_id', $user->primary_unit_id);
+                });
+            }
+        }
+
         $definitionCount = (int) DB::table('ipa_report_definition')->count();
-        $runCount = (int) DB::table('ipa_report_run')->count();
-        $successfulRunCount = (int) DB::table('ipa_report_run')->where('status', 1)->count();
+        $runCount = (int) (clone $runCountQuery)->count();
+        $successfulRunCount = (int) (clone $runCountQuery)->where('status', 1)->count();
 
         $newProjects = $metricValues['CITY_NEW_PROJECTS_Q1_2026'] ?? 0.0;
         $fdiTotal = $metricValues['CITY_FDI_TOTAL_2026'] ?? 0.0;
@@ -110,8 +144,16 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
             'recentRuns' => $recentRuns,
             'forecast' => [
                 'title' => 'Dự báo Tăng trưởng 2026',
-                'headline' => sprintf('Dựa trên %.0f dự án mới và %.1f chỉ số PCI, báo cáo thành phố đang phản ánh đà tăng ổn định.', $newProjects, $pciIndex),
-                'detail' => sprintf('Tổng vốn FDI đang theo dõi: %s và vốn đăng ký nội địa: %s.', $this->formatForecastCurrency($fdiTotal), $this->formatForecastCurrency($domesticCapital)),
+                'headline' => sprintf(
+                    'Dựa trên %.0f dự án mới và %.1f chỉ số PCI, báo cáo thành phố đang phản ánh đà tăng ổn định.',
+                    $newProjects,
+                    $pciIndex
+                ),
+                'detail' => sprintf(
+                    'Tổng vốn FDI đang theo dõi: %s và vốn đăng ký nội địa: %s.',
+                    $this->formatForecastCurrency($fdiTotal),
+                    $this->formatForecastCurrency($domesticCapital)
+                ),
             ],
         ];
     }
