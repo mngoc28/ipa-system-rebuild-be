@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 final class ApprovalService
 {
-    public function __construct(private readonly ApprovalRepositoryInterface $repository)
+    public function __construct(private ApprovalRepositoryInterface $repository)
     {
     }
 

@@ -13,8 +13,8 @@ use Illuminate\Http\Request;
 final class AuditLogController extends Controller
 {
     public function __construct(
-        private readonly AuditLogService $auditLogService,
-        private readonly AuditLogValidation $auditLogValidation,
+        private AuditLogService $auditLogService,
+        private AuditLogValidation $auditLogValidation,
     ) {
     }
 

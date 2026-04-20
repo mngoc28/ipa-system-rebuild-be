@@ -6,22 +6,27 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaMdPartnerStatusSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_md_partner_status')->exists()) {
-            return;
-        }
+        $rows = [
+            ['code' => 'LEAD', 'name_vi' => 'Lead'],
+            ['code' => 'PARTNER', 'name_vi' => 'Partner'],
+            ['code' => 'ACTIVE', 'name_vi' => 'Active'],
+        ];
 
-        DB::table('ipa_md_partner_status')->insert([
-                'code' => 'IPA_MD_PARTNER_STATUS_CODE',
-                'name_vi' => 'name_vi_seed',
-                'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        foreach ($rows as $row) {
+            DB::table('ipa_md_partner_status')->updateOrInsert(
+                ['code' => $row['code']],
+                [
+                    'name_vi' => $row['name_vi'],
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
     }
 }

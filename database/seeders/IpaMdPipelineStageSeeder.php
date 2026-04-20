@@ -6,16 +6,11 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaMdPipelineStageSeeder extends Seeder
 {
     public function run(): void
     {
-        if (DB::table('ipa_md_pipeline_stage')->exists()) {
-            return;
-        }
-
         $stages = [
             ['code' => 'LEAD', 'name_vi' => 'Tiềm năng', 'stage_order' => 1],
             ['code' => 'CONTACTED', 'name_vi' => 'Đã liên hệ', 'stage_order' => 2],
@@ -26,11 +21,14 @@ final class IpaMdPipelineStageSeeder extends Seeder
         ];
 
         foreach ($stages as $stage) {
-            DB::table('ipa_md_pipeline_stage')->insert(array_merge($stage, [
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]));
+            DB::table('ipa_md_pipeline_stage')->updateOrInsert(
+                ['code' => $stage['code']],
+                array_merge($stage, [
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ])
+            );
         }
     }
 }

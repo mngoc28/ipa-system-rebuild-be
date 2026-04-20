@@ -14,7 +14,7 @@ use Throwable;
 final class PartnerService
 {
     public function __construct(
-        private readonly PartnerRepositoryInterface $partnerRepository,
+        private PartnerRepositoryInterface $partnerRepository,
     ) {
     }
 
@@ -46,9 +46,9 @@ final class PartnerService
                 ->select(['id', 'name_vi', 'name_en'])
                 ->orderBy('name_vi')
                 ->get()
-                ->map(static fn (object $country): array => [
+                ->map(fn (object $country): array => [
                     'id' => (string) $country->id,
-                    'label' => (string) ($country->name_vi ?? $country->name_en ?? ''),
+                    'label' => $this->resolveCountryLabel((string) $country->name_vi, (string) ($country->name_en ?? '')),
                 ])
                 ->values()
                 ->all();
@@ -57,9 +57,9 @@ final class PartnerService
                 ->select(['id', 'name_vi'])
                 ->orderBy('name_vi')
                 ->get()
-                ->map(static fn (object $sector): array => [
+                ->map(fn (object $sector): array => [
                     'id' => (string) $sector->id,
-                    'label' => (string) ($sector->name_vi ?? ''),
+                    'label' => $this->resolveSectorLabel((string) ($sector->name_vi ?? ''), (string) $sector->id),
                 ])
                 ->values()
                 ->all();
@@ -133,9 +133,9 @@ final class PartnerService
                     'partnerCode' => (string) $partner->partner_code,
                     'partnerName' => (string) $partner->partner_name,
                     'countryId' => (int) $partner->country_id,
-                    'countryName' => (string) ($country->name_vi ?? $country->name_en ?? ''),
+                    'countryName' => $this->resolveCountryLabel((string) ($country->name_vi ?? ''), (string) ($country->name_en ?? '')),
                     'sectorId' => (int) $partner->sector_id,
-                    'sectorName' => (string) ($sector->name_vi ?? ''),
+                    'sectorName' => $this->resolveSectorLabel((string) ($sector->name_vi ?? ''), (string) $partner->sector_id),
                     'status' => (int) $partner->status,
                     'score' => $partner->score !== null ? (float) $partner->score : null,
                     'website' => $partner->website !== null ? (string) $partner->website : null,
@@ -231,5 +231,42 @@ final class PartnerService
                 'message' => __('partners.messages.delete_error'),
             ];
         }
+    }
+
+    private function resolveCountryLabel(string $nameVi, string $nameEn): string
+    {
+        $label = trim($nameVi !== '' ? $nameVi : $nameEn);
+
+        if ($label === '' || preg_match('/^name_vi_seed/i', $label) === 1 || preg_match('/^name_en_seed/i', $label) === 1) {
+            return match (true) {
+                str_contains(strtolower($nameVi . ' ' . $nameEn), 'vietnam') => 'Việt Nam',
+                str_contains(strtolower($nameVi . ' ' . $nameEn), 'japan') => 'Nhật Bản',
+                str_contains(strtolower($nameVi . ' ' . $nameEn), 'korea') => 'Hàn Quốc',
+                str_contains(strtolower($nameVi . ' ' . $nameEn), 'singapore') => 'Singapore',
+                str_contains(strtolower($nameVi . ' ' . $nameEn), 'united states') => 'Hoa Kỳ',
+                str_contains(strtolower($nameVi . ' ' . $nameEn), 'germany') => 'Đức',
+                str_contains(strtolower($nameVi . ' ' . $nameEn), 'taiwan') => 'Đài Loan',
+                default => $label !== '' ? $label : 'Chưa xác định',
+            };
+        }
+
+        return $label;
+    }
+
+    private function resolveSectorLabel(string $nameVi, string $sectorId): string
+    {
+        $label = trim($nameVi);
+
+        if ($label === '' || preg_match('/^name_vi_seed/i', $label) === 1) {
+            return match ($sectorId) {
+                '1' => 'Công nghệ cao',
+                '2' => 'Logistics',
+                '3' => 'Fintech',
+                '4' => 'Năng lượng tái tạo',
+                default => $label !== '' ? $label : 'Chưa xác định',
+            };
+        }
+
+        return $label;
     }
 }

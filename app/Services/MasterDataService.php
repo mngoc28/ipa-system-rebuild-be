@@ -12,7 +12,7 @@ use Throwable;
 final class MasterDataService
 {
     public function __construct(
-        private readonly MasterDataRepositoryInterface $masterDataRepository,
+        private MasterDataRepositoryInterface $masterDataRepository,
     ) {
     }
 

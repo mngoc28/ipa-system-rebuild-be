@@ -29,6 +29,7 @@ return [
 
     // Login
     'login_success'                    => 'Đăng nhập thành công.',
+    'login_error'                      => 'Thông tin đăng nhập không chính xác.',
     'login_failed'                     => 'Đăng nhập thất bại.',
     'login_forbidden'                  => 'Tài khoản này không được phép đăng nhập vào hệ thống.',
     'subject_mail_login_information'   => 'Thông tin đăng nhập',

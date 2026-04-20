@@ -19,6 +19,9 @@ class DelegationMember extends Model
         'contact_email',
         'contact_phone',
         'member_type',
+        'gender',
+        'identity_number',
+        'is_vip',
     ];
 
     protected $casts = [

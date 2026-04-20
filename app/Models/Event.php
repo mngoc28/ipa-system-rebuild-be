@@ -26,4 +26,14 @@ final class Event extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class, 'location_id');
+    }
+
+    public function staff()
+    {
+        return $this->belongsTo(User::class, 'staff_id');
+    }
 }

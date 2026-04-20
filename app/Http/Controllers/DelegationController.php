@@ -73,7 +73,7 @@ class DelegationController extends Controller
             if (empty($data['code'])) {
                 $data['code'] = 'DEL-' . time();
             }
-            
+
             // Mock owner
             if (empty($data['owner_user_id'])) {
                 $data['owner_user_id'] = $this->resolveUserId($request);
@@ -158,11 +158,79 @@ class DelegationController extends Controller
         }
     }
 
+    public function listComments($id)
+    {
+        $result = $this->service->listComments((int)$id);
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'error' => ['message' => $result['message']]
+            ], 404);
+        }
+
+        return response()->json($result);
+    }
+
+    public function addComment(Request $request, $id)
+    {
+        $request->validate([
+            'content' => 'required|string',
+        ]);
+
+        $commenterId = $this->resolveUserId($request);
+
+        $result = $this->service->addComment((int)$id, $request->input('content'), $commenterId);
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'error' => ['message' => $result['message']]
+            ], 400); // Bad Request or Not Found
+        }
+
+        return response()->json($result, 201);
+    }
+
+    public function updateComment(Request $request, $id, $commentId)
+    {
+        $request->validate([
+            'content' => 'required|string',
+        ]);
+
+        $userId = $this->resolveUserId($request);
+        $result = $this->service->updateComment((int)$commentId, $request->input('content'), $userId);
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'error' => ['message' => $result['message']]
+            ], 400);
+        }
+
+        return response()->json($result);
+    }
+
+    public function deleteComment(Request $request, $id, $commentId)
+    {
+        $userId = $this->resolveUserId($request);
+        $result = $this->service->deleteComment((int)$commentId, $userId);
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'error' => ['message' => $result['message']]
+            ], 400);
+        }
+
+        return response()->json($result);
+    }
+
     /**
      * Resolve user ID from request (Mocking auth for development)
      */
     private function resolveUserId(Request $request)
     {
-        return $request->header('X-Mock-User-Id', 1);
+        return auth()->id() ?: 1;
     }
 }

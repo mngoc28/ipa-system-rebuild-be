@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\DB;
 final class TaskController extends Controller
 {
     public function __construct(
-        private readonly TaskService $taskService,
-        private readonly TaskValidation $taskValidation,
+        private TaskService $taskService,
+        private TaskValidation $taskValidation,
     ) {
     }
 
@@ -96,6 +96,41 @@ final class TaskController extends Controller
         }
 
         return $this->successResponse(null, $result['message']);
+    }
+
+    public function getComments(int $taskId): JsonResponse
+    {
+        $result = $this->taskService->getComments($taskId);
+        return response()->json($result);
+    }
+
+    public function addComment(Request $request, int $taskId): JsonResponse
+    {
+        $request->validate(['content' => 'required|string']);
+        $result = $this->taskService->addComment($taskId, $request->only('content'));
+        return response()->json($result);
+    }
+
+    public function getAttachments(int $taskId): JsonResponse
+    {
+        $result = $this->taskService->getAttachments($taskId);
+        return response()->json($result);
+    }
+
+    public function uploadAttachment(Request $request, int $taskId): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg,zip',
+        ]);
+
+        $result = $this->taskService->addAttachment($taskId, $request->file('file'));
+        return response()->json($result);
+    }
+
+    public function deleteAttachment(int $taskId, int $attachmentId): JsonResponse
+    {
+        $result = $this->taskService->deleteAttachment($taskId, $attachmentId);
+        return response()->json($result);
     }
 
     private function resolveUserId(Request $request): int

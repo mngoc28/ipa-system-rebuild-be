@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\DB;
 final class NotificationController extends Controller
 {
     public function __construct(
-        private readonly NotificationService $notificationService,
-        private readonly NotificationValidation $notificationValidation,
+        private NotificationService $notificationService,
+        private NotificationValidation $notificationValidation,
     ) {
     }
 
@@ -88,6 +88,23 @@ final class NotificationController extends Controller
 
         if (! $result['success']) {
             return $this->errorResponse($result['message'], 'DELETE_READ_FAILED', HttpStatus::BAD_REQUEST);
+        }
+
+        return $this->successResponse($result['data'], $result['message']);
+    }
+
+    public function count(Request $request): JsonResponse
+    {
+        $userId = $this->resolveUserId($request);
+
+        if ($userId <= 0) {
+            return $this->errorResponse(__('auth.unauthenticated'), 'UNAUTHORIZED', HttpStatus::UNAUTHORIZED);
+        }
+
+        $result = $this->notificationService->getUnreadCount($userId);
+
+        if (! $result['success']) {
+            return $this->errorResponse($result['message'], 'COUNT_FAILED', HttpStatus::BAD_REQUEST);
         }
 
         return $this->successResponse($result['data'], $result['message']);

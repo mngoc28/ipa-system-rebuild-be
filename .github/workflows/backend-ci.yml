@@ -1,0 +1,39 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, dom, curl, libxml, mysql, zip
+          coverage: none
+
+      - name: Install Dependencies
+        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      - name: Prepare Architecture
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Check Code Style (PHPCS)
+        run: composer run phpcs
+
+      - name: Static Analysis (PHPStan)
+        run: composer run phpstan
+
+      - name: Execute Tests (PHPUnit)
+        run: vendor/bin/phpunit

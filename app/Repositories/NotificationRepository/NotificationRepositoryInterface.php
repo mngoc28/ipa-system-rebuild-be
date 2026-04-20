@@ -16,4 +16,8 @@ interface NotificationRepositoryInterface extends RepositoryInterface
     public function markReadAll(int $userId): int;
 
     public function deleteRead(int $userId): int;
+
+    public function countUnread(int $userId): int;
+
+    public function createWithRecipients(array $data, array $recipientUserIds): ?int;
 }

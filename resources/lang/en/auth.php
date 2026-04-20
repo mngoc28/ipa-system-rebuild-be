@@ -29,6 +29,7 @@ return [
 
     // Login
     'login_success'                    => 'Login successful.',
+    'login_error'                      => 'Invalid credentials.',
     'login_failed'                     => 'Login failed.',
     'login_forbidden'                  => 'This account is not allowed to log in to the system.',
     'subject_mail_login_information'   => 'Login information',
@@ -116,7 +117,7 @@ return [
 
     // Role
     'role_required'                    => 'Role is required.',
-    'role_in'                          => 'Role is invalid. Only accepts: admin, partner, user.',
+    'role_in'                          => 'Role is invalid. Only accepts: admin, manager, user.',
 
     // Phone
     'phone_required'                   => 'Phone is required.',

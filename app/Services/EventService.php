@@ -12,16 +12,16 @@ use Throwable;
 final class EventService
 {
     public function __construct(
-        private readonly EventRepositoryInterface $eventRepository,
+        private EventRepositoryInterface $eventRepository,
     ) {
     }
 
-    public function getAll(Request $request): array
+    public function getAll(Request $request, ?int $authUserId = null): array
     {
         try {
             return [
                 'success' => true,
-                'data' => $this->eventRepository->getPaginated($request),
+                'data' => $this->eventRepository->getPaginated($request, $authUserId),
                 'message' => __('events.messages.fetch_success'),
             ];
         } catch (Throwable $throwable) {

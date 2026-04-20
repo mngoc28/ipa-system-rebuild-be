@@ -32,6 +32,8 @@ final class TaskValidation
             'delegation_id' => 'nullable|integer',
             'event_id' => 'nullable|integer',
             'minutes_id' => 'nullable|integer',
+            'assignee_ids' => 'nullable|array',
+            'assignee_ids.*' => 'integer|exists:ipa_user,id',
         ]);
     }
 
@@ -43,6 +45,8 @@ final class TaskValidation
             'status' => 'integer',
             'priority' => 'integer',
             'due_at' => 'nullable|date',
+            'assignee_ids' => 'nullable|array',
+            'assignee_ids.*' => 'integer|exists:ipa_user,id',
         ]);
     }
 }

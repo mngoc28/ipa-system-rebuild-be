@@ -28,7 +28,9 @@ final class SystemSettingRepository extends BaseRepository implements SystemSett
     public function getAllByGroups(?array $groups = null): array
     {
         $definitions = config('system_settings.groups', []);
-        $allowedGroups = $groups !== null && $groups !== [] ? array_values(array_intersect($groups, $this->getAllowedGroups())) : $this->getAllowedGroups();
+        $allowedGroups = $groups !== null && $groups !== []
+            ? array_values(array_intersect($groups, $this->getAllowedGroups()))
+            : $this->getAllowedGroups();
 
         $rows = DB::table('ipa_system_setting')
             ->whereIn('setting_group', $allowedGroups)
@@ -108,7 +110,10 @@ final class SystemSettingRepository extends BaseRepository implements SystemSett
             return false;
         }
 
-        return ($record->setting_value !== null && $record->setting_value !== '') || ($record->encrypted_value !== null && $record->encrypted_value !== '');
+        $hasValue = ($record->setting_value !== null && $record->setting_value !== '');
+        $hasSecret = ($record->encrypted_value !== null && $record->encrypted_value !== '');
+
+        return $hasValue || $hasSecret;
     }
 
     private function definitionMap(): array
@@ -141,7 +146,9 @@ final class SystemSettingRepository extends BaseRepository implements SystemSett
             'is_secret' => $isSecret,
             'has_value' => $hasValue,
             'options' => $definition['options'] ?? [],
-            'updated_at' => $record?->updated_at instanceof Carbon ? $record->updated_at->toIso8601String() : ($record?->updated_at ? Carbon::parse((string) $record->updated_at)->toIso8601String() : null),
+            'updated_at' => $record?->updated_at instanceof Carbon
+                ? $record->updated_at->toIso8601String()
+                : ($record?->updated_at ? Carbon::parse((string) $record->updated_at)->toIso8601String() : null),
         ];
     }
 

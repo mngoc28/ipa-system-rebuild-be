@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaCountrySeeder extends Seeder
 {
@@ -17,19 +16,21 @@ final class IpaCountrySeeder extends Seeder
             ['code' => 'COUNTRY_JAPAN', 'name_vi' => 'Nhật Bản', 'name_en' => 'Japan'],
             ['code' => 'COUNTRY_KOREA', 'name_vi' => 'Hàn Quốc', 'name_en' => 'South Korea'],
             ['code' => 'COUNTRY_SINGAPORE', 'name_vi' => 'Singapore', 'name_en' => 'Singapore'],
+            ['code' => 'COUNTRY_USA', 'name_vi' => 'Hoa Kỳ', 'name_en' => 'United States'],
+            ['code' => 'COUNTRY_GERMANY', 'name_vi' => 'Đức', 'name_en' => 'Germany'],
+            ['code' => 'COUNTRY_TAIWAN', 'name_vi' => 'Đài Loan', 'name_en' => 'Taiwan'],
         ];
 
         foreach ($countries as $country) {
-            if (DB::table('ipa_country')->where('code', $country['code'])->exists()) {
-                continue;
-            }
-
-            DB::table('ipa_country')->insert([
-                ...$country,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            DB::table('ipa_country')->updateOrInsert(
+                ['code' => $country['code']],
+                [
+                    ...$country,
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
         }
     }
 }

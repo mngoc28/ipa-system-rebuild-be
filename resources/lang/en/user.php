@@ -39,7 +39,7 @@ return [
     'email_string' => 'Email must be a string.',
     'email_max' => 'Email may not be greater than 255 characters.',
     'role_string' => 'Role must be a string.',
-    'role_in' => 'Invalid role. Only accepts: admin, staff, user.',
+    'role_in' => 'Invalid role. Only accepts: admin, manager, user.',
     'phone_string' => 'Phone must be a string.',
     'created_at_from_date' => 'Start date must be a valid date.',
     'created_at_from_date_format' => 'Start date must be in Y-m-d format.',

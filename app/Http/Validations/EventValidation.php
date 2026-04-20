@@ -20,6 +20,7 @@ final class EventValidation
             'to' => 'nullable|date|after_or_equal:from',
             'delegationId' => 'nullable|string|max:255',
             'organizerId' => 'nullable|string|max:255',
+            'unitId' => 'nullable|string|max:255',
         ]);
     }
 

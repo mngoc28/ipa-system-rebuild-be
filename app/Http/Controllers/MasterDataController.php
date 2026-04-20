@@ -13,8 +13,8 @@ use Illuminate\Http\Request;
 final class MasterDataController extends Controller
 {
     public function __construct(
-        private readonly MasterDataService $masterDataService,
-        private readonly MasterDataValidation $masterDataValidation,
+        private MasterDataService $masterDataService,
+        private MasterDataValidation $masterDataValidation,
     ) {
     }
 

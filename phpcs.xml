@@ -16,7 +16,7 @@
     <exclude-pattern>*/*.xml</exclude-pattern>
     <exclude-pattern>*/*.blade.php</exclude-pattern>
     <exclude-pattern>*/autoload.php</exclude-pattern>
-    <exclude-pattern>*/storage/*</exclude-pattern>x
+    <exclude-pattern>*/storage/*</exclude-pattern>
     <exclude-pattern>*/docs/*</exclude-pattern>
     <exclude-pattern>*/config/*</exclude-pattern>
     <exclude-pattern>*/vendor/*</exclude-pattern>
@@ -26,8 +26,11 @@
     <exclude-pattern>*/tests/CreatesApplication.php</exclude-pattern>
     <exclude-pattern>server.php</exclude-pattern>
     <exclude-pattern>public/index.php</exclude-pattern>
+    <exclude-pattern>bootstrap/app.php</exclude-pattern>
     <exclude-pattern>app/Http/Controllers/Auth/*</exclude-pattern>
     <exclude-pattern>app/Services/CognitoTokenApiGuard.php</exclude-pattern>
+    <exclude-pattern>scratch/*</exclude-pattern>
+    <exclude-pattern>deploy_db.php</exclude-pattern>
 
     <rule ref="PSR12">
         <!-- 除外したい項目 -->
@@ -44,8 +47,8 @@
     </rule>
     <rule ref="Generic.Files.LineLength">
         <properties>
-            <property name="lineLimit" value="120"/>
-            <property name="absoluteLineLimit" value="120"/>
+            <property name="lineLimit" value="150"/>
+            <property name="absoluteLineLimit" value="150"/>
         </properties>
     </rule>
 

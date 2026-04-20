@@ -12,7 +12,7 @@ use Throwable;
 final class AuditLogService
 {
     public function __construct(
-        private readonly AuditLogRepositoryInterface $auditLogRepository,
+        private AuditLogRepositoryInterface $auditLogRepository,
     ) {
     }
 

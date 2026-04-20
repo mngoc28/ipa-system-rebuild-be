@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\DB;
 final class DocumentController extends Controller
 {
     public function __construct(
-        private readonly DocumentService $documentService,
-        private readonly DocumentValidation $documentValidation,
+        private DocumentService $documentService,
+        private DocumentValidation $documentValidation,
     ) {
     }
 
@@ -48,7 +48,11 @@ final class DocumentController extends Controller
         $parentFolderId = $request->input('parentFolderId');
 
         $duplicateExists = DB::table('ipa_folder')
-            ->when($parentFolderId !== null, fn ($query) => $query->where('parent_folder_id', (int) $parentFolderId), fn ($query) => $query->whereNull('parent_folder_id'))
+            ->when(
+                $parentFolderId !== null,
+                fn ($query) => $query->where('parent_folder_id', (int) $parentFolderId),
+                fn ($query) => $query->whereNull('parent_folder_id')
+            )
             ->where('folder_name', trim((string) $request->input('folderName')))
             ->where('scope_type', $this->resolveScopeType($scopeType))
             ->exists();

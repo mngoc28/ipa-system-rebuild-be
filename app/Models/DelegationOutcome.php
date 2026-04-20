@@ -13,9 +13,10 @@ class DelegationOutcome extends Model
 
     protected $fillable = [
         'delegation_id',
-        'outcome_text',
-        'follow_up_action',
-        'is_resolved',
+        'summary',
+        'next_steps',
+        'rating',
+        'progress_percent',
     ];
 
     protected $casts = [

@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\DB;
 final class MinutesController extends Controller
 {
     public function __construct(
-        private readonly MinutesService $minutesService,
-        private readonly MinutesValidation $minutesValidation,
+        private MinutesService $minutesService,
+        private MinutesValidation $minutesValidation,
     ) {
     }
 
@@ -73,7 +73,11 @@ final class MinutesController extends Controller
         }
 
         if (! $request->filled('contentText') && ! $request->filled('contentJson')) {
-            return $this->validateError(['contentText' => [__('minutes.messages.version_content_required')]], 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
+            return $this->validateError(
+                ['contentText' => [__('minutes.messages.version_content_required')]],
+                'VALIDATION_FAILED',
+                HttpStatus::VALIDATION_ERROR
+            );
         }
 
         $result = $this->minutesService->createVersion($id, $request->all(), $this->resolveUserId($request));

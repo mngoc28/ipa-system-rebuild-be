@@ -12,7 +12,7 @@ use Throwable;
 final class NotificationService
 {
     public function __construct(
-        private readonly NotificationRepositoryInterface $notificationRepository,
+        private NotificationRepositoryInterface $notificationRepository,
     ) {
     }
 
@@ -107,6 +107,46 @@ final class NotificationService
                 'data' => null,
                 'message' => __('notifications.messages.delete_read_error'),
             ];
+        }
+    }
+
+    public function getUnreadCount(int $userId): array
+    {
+        try {
+            return [
+                'success' => true,
+                'data' => ['unreadCount' => $this->notificationRepository->countUnread($userId)],
+                'message' => __('notifications.messages.fetch_success'),
+            ];
+        } catch (Throwable $throwable) {
+            Log::error('NotificationService::getUnreadCount', [
+                'userId' => $userId,
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'data' => null,
+                'message' => __('notifications.messages.fetch_error'),
+            ];
+        }
+    }
+
+    public function notify(array $data, array|int $recipientIds): bool
+    {
+        try {
+            $recipientIds = is_array($recipientIds) ? $recipientIds : [$recipientIds];
+            if (empty($recipientIds)) {
+                return false;
+            }
+
+            return (bool) $this->notificationRepository->createWithRecipients($data, $recipientIds);
+        } catch (Throwable $throwable) {
+            Log::error('NotificationService::notify', [
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return false;
         }
     }
 }

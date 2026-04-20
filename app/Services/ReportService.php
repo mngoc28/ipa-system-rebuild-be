@@ -11,7 +11,7 @@ use Throwable;
 final class ReportService
 {
     public function __construct(
-        private readonly ReportRepositoryInterface $reportRepository,
+        private ReportRepositoryInterface $reportRepository,
     ) {
     }
 

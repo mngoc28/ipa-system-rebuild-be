@@ -56,7 +56,6 @@ class Kernel extends HttpKernel
      */
     protected $routeMiddleware = [
         "auth"             => \App\Http\Middleware\Authenticate::class,
-        'auth.super'       => \App\Http\Middleware\SuperAdminMiddleware::class,
         "role"             => \App\Http\Middleware\RoleMiddleware::class,
         "auth.basic"       =>
         \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
@@ -72,7 +71,7 @@ class Kernel extends HttpKernel
         // "throttle" => TooManyAttemptsException::class,
         "verified"         => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         "bindings"         => \Illuminate\Routing\Middleware\SubstituteBindings::class,
-        "verified" => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        "bindings" => \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        "jwt.auth"    => \Tymon\JWTAuth\Http\Middleware\Authenticate::class,
+        "jwt.refresh" => \Tymon\JWTAuth\Http\Middleware\RefreshToken::class,
     ];
 }

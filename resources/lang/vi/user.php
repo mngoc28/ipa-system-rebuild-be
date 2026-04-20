@@ -37,7 +37,7 @@ return [
     'email_string'                       => 'Email phải là chuỗi ký tự.',
     'email_max'                          => 'Email không được vượt quá 255 ký tự.',
     'role_string'                        => 'Vai trò phải là chuỗi ký tự.',
-    'role_in'                            => 'Vai trò không hợp lệ. Chỉ chấp nhận: admin, staff, user.',
+    'role_in'                            => 'Vai trò không hợp lệ. Chỉ chấp nhận: admin, manager, user.',
     'phone_string'                       => 'Số điện thoại phải là chuỗi ký tự.',
     'phone_max'                          => 'Số điện thoại không được vượt quá 20 ký tự.',
     'created_at_from_date'               => 'Ngày bắt đầu phải là ngày hợp lệ.',

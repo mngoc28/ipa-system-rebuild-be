@@ -1,0 +1,1340 @@
+/* =========================================================
+IPA SYSTEM - ERD DBML (Production Draft)
+Dùng để dán trực tiếp vào dbdiagram / diagram-erd.
+Chuẩn: PostgreSQL, bigint identity, timestamptz.
+
+ENUM MAPPING (STATUS / TYPE)
+------------------------------------------------------------
+1) YES_NO_FLAG
+0 NO, 1 YES
+
+2) USER_STATUS (ipa_user.status)
+0 INACTIVE, 1 ACTIVE, 2 LOCKED
+
+3) DELEGATION_DIRECTION (ipa_delegation.direction)
+1 INBOUND, 2 OUTBOUND
+
+4) DELEGATION_STATUS (ipa_delegation.status)
+0 DRAFT, 1 PENDING_APPROVAL, 2 NEEDS_REVISION, 3 APPROVED,
+4 IN_PROGRESS, 5 COMPLETED, 6 CANCELLED
+
+5) ACTION_ITEM_STATUS (ipa_delegation_checklist.status)
+0 TODO, 1 DOING, 2 DONE, 3 CANCELLED
+
+6) ACTION_ITEM_PRIORITY (ipa_delegation_checklist.priority)
+0 LOW, 1 MEDIUM, 2 HIGH, 3 URGENT
+
+7) EVENT_TYPE (ipa_event.event_type)
+1 MEETING, 2 SITE_VISIT, 3 GALA, 4 TRAVEL
+
+8) EVENT_STATUS (ipa_event.status)
+0 DRAFT, 1 CONFIRMED, 2 IN_PROGRESS, 3 DONE, 4 CANCELLED
+
+9) MINUTES_STATUS (ipa_minutes.status)
+0 DRAFT, 1 INTERNAL, 2 FINAL, 3 ARCHIVED
+
+10) TASK_STATUS (ipa_task.status)
+0 TODO, 1 DOING, 2 DONE, 3 CANCELLED
+
+11) APPROVAL_STATUS (ipa_approval_request.status)
+0 PENDING, 1 APPROVED, 2 REJECTED, 3 CANCELLED
+
+12) APPROVAL_ACTION (ipa_approval_step.decision)
+0 WAITING, 1 APPROVE, 2 REJECT
+
+13) PARTNER_STATUS (ipa_partner.status)
+0 LEAD, 1 PARTNER, 2 ACTIVE, 3 INACTIVE
+
+14) NOTIFY_CHANNEL (ipa_notification_channel.channel_type)
+0 IN_APP, 1 EMAIL, 2 ZALO_ZNS
+
+15) NOTIFY_STATUS (ipa_notification_recipient.delivery_status)
+0 QUEUED, 1 SENT, 2 FAILED, 3 READ
+
+16) PIPELINE_STAGE_CODE (ipa_md_pipeline_stage.code)
+1 CONNECTED, 2 SITE_SURVEY, 3 NEGOTIATING, 4 LICENSING, 5 INVESTING
+
+17) REPORT_RUN_STATUS (ipa_report_run.status)
+0 RUNNING, 1 SUCCESS, 2 FAILED, 3 PARTIAL_SUCCESS
+
+18) INTEGRATION_STATUS (ipa_integration_endpoint.status)
+0 INACTIVE, 1 ACTIVE, 2 ERROR
+
+19) NOTIFICATION_SEVERITY (ipa_notification.severity) 
+1 SUCCESS/INFO (Dấu tích xanh), 2 WARNING (Dấu chấm than cam), 0 DEFAULT (Thông tin chung)
+========================================================= */
+
+
+/* =========================
+  A) IDENTITY + RBAC (7)
+========================= */
+
+Table ipa_user { // Người dùng hệ thống
+  id bigint [pk, increment] // PK
+  username varchar(50) [not null, unique] // Tên đăng nhập
+  email varchar(255) [not null, unique] // Email duy nhất
+  password varchar(255) // Mật khẩu (đã mã hóa)
+  full_name varchar(150) [not null] // Họ tên
+  phone varchar(20) // SĐT
+  avatar_url text // URL avatar
+  status smallint [not null, default: 1] // USER_STATUS
+  primary_unit_id bigint // FK -> ipa_org_unit.id
+  last_login_at timestamptz // Lần đăng nhập gần nhất
+  created_at timestamptz [not null, default: `now()`] // Thời điểm tạo
+  updated_at timestamptz [not null, default: `now()`] // Thời điểm cập nhật
+  deleted_at timestamptz // Soft delete
+}
+
+Table ipa_role { // Vai trò nghiệp vụ
+  id bigint [pk, increment]
+  code varchar(50) [not null, unique] // Staff/Manager/Director/Admin
+  name varchar(100) [not null] // Tên hiển thị
+  is_system boolean [not null, default: true] // Vai trò hệ thống
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_permission { // Quyền truy cập chức năng
+  id bigint [pk, increment]
+  code varchar(100) [not null, unique] // delegation.read, task.write...
+  module varchar(80) [not null] // Module
+  action varchar(50) [not null] // read/write/approve...
+  name varchar(150) [not null] // Mô tả quyền
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_role_permission { // Mapping role - permission (N:N)
+  role_id bigint [not null] // FK -> ipa_role.id
+  permission_id bigint [not null] // FK -> ipa_permission.id
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (role_id, permission_id) [pk]
+    permission_id
+  }
+}
+
+Table ipa_user_role { // Mapping user - role (N:N)
+  user_id bigint [not null] // FK -> ipa_user.id
+  role_id bigint [not null] // FK -> ipa_role.id
+  effective_from timestamptz // Hiệu lực từ
+  effective_to timestamptz // Hiệu lực đến
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (user_id, role_id, effective_from) [pk]
+    role_id
+  }
+}
+
+Table ipa_org_unit { // Đơn vị/phòng ban
+  id bigint [pk, increment]
+  unit_code varchar(50) [not null, unique] // Mã đơn vị
+  unit_name varchar(150) [not null] // Tên đơn vị
+  unit_type varchar(50) [not null] // center/department/board
+  parent_unit_id bigint // FK tự tham chiếu
+  manager_user_id bigint // FK -> ipa_user.id
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_user_unit_assignment { // Lịch sử/đa phân công đơn vị
+  id bigint [pk, increment]
+  user_id bigint [not null] // FK -> ipa_user.id
+  unit_id bigint [not null] // FK -> ipa_org_unit.id
+  position_title varchar(120) // Chức danh
+  is_primary boolean [not null, default: false] // Đơn vị chính
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    user_id
+    unit_id
+    (unit_id, is_primary)
+  }
+}
+
+
+/* =========================
+  B) DELEGATION CORE (7)
+========================= */
+
+Table ipa_delegation { // Hồ sơ đoàn công tác
+  id bigint [pk, increment]
+  code varchar(50) [not null, unique] // DL-2026-001
+  name varchar(255) [not null] // Tên đoàn
+  direction smallint [not null] // DELEGATION_DIRECTION
+  status smallint [not null, default: 0] // DELEGATION_STATUS
+  priority smallint [not null, default: 1] // ACTION_ITEM_PRIORITY scale
+  country_id bigint [not null] // FK -> ipa_country.id
+  host_unit_id bigint [not null] // FK -> ipa_org_unit.id
+  owner_user_id bigint [not null] // FK -> ipa_user.id
+  start_date date [not null] // Ngày bắt đầu
+  end_date date [not null] // Ngày kết thúc
+  participant_count int [not null, default: 0] // Số thành viên
+  objective text // Mục tiêu
+  description text // Mô tả
+  investment_potential numeric(15,2) // Tiềm năng đầu tư
+  approval_remark text // Ghi chú phê duyệt
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  deleted_at timestamptz
+
+  indexes {
+    status
+    owner_user_id
+    host_unit_id
+    (status, start_date)
+    (host_unit_id, status)
+  }
+}
+
+Table ipa_delegation_member { // Thành viên đoàn
+  id bigint [pk, increment]
+  delegation_id bigint [not null] // FK -> ipa_delegation.id
+  full_name varchar(150) [not null] // Họ tên
+  title varchar(120) // Chức vụ
+  organization_name varchar(150) // Tổ chức
+  gender varchar(50) // Giới tính
+  identity_number varchar(50) // Số định danh (Passport/CCCD)
+  contact_email varchar(255) // Email
+  contact_phone varchar(20) // Điện thoại
+  member_type smallint [not null, default: 0] // 0 guest,1 internal,2 external
+  is_vip boolean [not null, default: false] // Thành viên VIP
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    delegation_id
+    (delegation_id, member_type)
+  }
+}
+
+Table ipa_delegation_contact { // Liên hệ chính cho đoàn
+  id bigint [pk, increment]
+  delegation_id bigint [not null] // FK -> ipa_delegation.id
+  partner_contact_id bigint // FK -> ipa_partner_contact.id
+  name varchar(150) [not null] // Tên liên hệ
+  role_name varchar(120) // Vai trò
+  email varchar(255) // Email
+  phone varchar(20) // Phone
+  is_primary boolean [not null, default: false] // Liên hệ chính
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    delegation_id
+    (delegation_id, is_primary)
+  }
+}
+
+Table ipa_delegation_checklist { // Đầu việc/hậu cần theo đoàn
+  id bigint [pk, increment]
+  delegation_id bigint [not null] // FK -> ipa_delegation.id
+  item_name varchar(255) [not null] // Tên việc
+  assignee_user_id bigint // FK -> ipa_user.id
+  due_date date // Hạn xử lý
+  status smallint [not null, default: 0] // ACTION_ITEM_STATUS
+  priority smallint [not null, default: 1] // ACTION_ITEM_PRIORITY
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    delegation_id
+    assignee_user_id
+    (delegation_id, status)
+  }
+}
+
+Table ipa_delegation_outcome { // Kết quả thực hiện đoàn
+  id bigint [pk, increment]
+  delegation_id bigint [not null, unique] // 1-1 với đoàn
+  progress_percent numeric(5,2) [not null, default: 0] // 0..100
+  rating int [not null, default: 0] // Đánh giá (1-5 sao)
+  summary text // Tóm tắt kết quả
+  next_steps text // Bước tiếp theo
+  report_updated_at timestamptz // Lần cập nhật báo cáo
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_delegation_comment { // Bình luận/Chat trong đoàn
+  id bigint [pk, increment]
+  delegation_id bigint [not null] // FK -> ipa_delegation.id
+  commenter_user_id bigint [not null] // FK -> ipa_user.id
+  comment_text text [not null]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    delegation_id
+  }
+}
+
+Table ipa_delegation_tag { // Tag phân loại đoàn
+  id bigint [pk, increment]
+  code varchar(50) [not null, unique] // Mã tag
+  name varchar(120) [not null] // Tên tag
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_delegation_tag_link { // Mapping đoàn - tag (N:N)
+  delegation_id bigint [not null] // FK -> ipa_delegation.id
+  tag_id bigint [not null] // FK -> ipa_delegation_tag.id
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (delegation_id, tag_id) [pk]
+    tag_id
+  }
+}
+
+
+/* =========================
+  C) SCHEDULE / EVENT (5)
+========================= */
+
+Table ipa_location { // Địa điểm dùng chung
+  id bigint [pk, increment]
+  name varchar(200) [not null] // Tên địa điểm
+  address_line varchar(255) // Địa chỉ
+  ward varchar(100) // Phường
+  district varchar(100) // Quận/Huyện
+  city varchar(100) // Thành phố
+  country_id bigint // FK -> ipa_country.id
+  lat numeric(10,7) // Vĩ độ
+  lng numeric(10,7) // Kinh độ
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_event { // Phiên lịch trình / sự kiện
+  id bigint [pk, increment]
+  delegation_id bigint // FK -> ipa_delegation.id
+  title varchar(255) [not null] // Tiêu đề sự kiện
+  description text // Mô tả
+  event_type smallint [not null] // EVENT_TYPE
+  status smallint [not null, default: 0] // EVENT_STATUS
+  start_at timestamptz [not null] // Bắt đầu
+  end_at timestamptz [not null] // Kết thúc
+  location_id bigint // FK -> ipa_location.id
+  staff_id bigint // FK -> ipa_user.id (Nhân viên phụ trách)
+  logistics_note text // Ghi chú hậu cần
+  organizer_user_id bigint [not null] // FK -> ipa_user.id
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    delegation_id
+    organizer_user_id
+    (start_at, end_at)
+    (delegation_id, start_at)
+  }
+}
+
+Table ipa_event_participant { // Người tham gia nội bộ
+  event_id bigint [not null] // FK -> ipa_event.id
+  user_id bigint [not null] // FK -> ipa_user.id
+  participation_status smallint [not null, default: 0] // 0 invited,1 joined,2 declined
+  invited_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (event_id, user_id) [pk]
+    user_id
+  }
+}
+
+Table ipa_event_external_participant { // Người tham gia ngoài hệ thống
+  id bigint [pk, increment]
+  event_id bigint [not null] // FK -> ipa_event.id
+  full_name varchar(150) [not null] // Họ tên
+  organization_name varchar(150) // Tổ chức
+  email varchar(255) // Email
+  phone varchar(20) // Phone
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_event_reschedule_request { // Đề xuất đổi lịch
+  id bigint [pk, increment]
+  event_id bigint [not null] // FK -> ipa_event.id
+  requested_by bigint [not null] // FK -> ipa_user.id
+  proposed_start_at timestamptz [not null] // Giờ đề xuất bắt đầu
+  proposed_end_at timestamptz [not null] // Giờ đề xuất kết thúc
+  reason text // Lý do
+  status smallint [not null, default: 0] // APPROVAL_STATUS-like
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    event_id
+    requested_by
+    (event_id, status)
+  }
+}
+
+
+/* =========================
+  D) MINUTES (5)
+========================= */
+
+Table ipa_minutes { // Biên bản họp
+  id bigint [pk, increment]
+  delegation_id bigint [not null] // FK -> ipa_delegation.id
+  event_id bigint // FK -> ipa_event.id
+  title varchar(255) [not null] // Tiêu đề biên bản
+  current_version_no int [not null, default: 1] // Phiên bản hiện tại
+  status smallint [not null, default: 0] // MINUTES_STATUS
+  owner_user_id bigint [not null] // FK -> ipa_user.id
+  approved_at timestamptz // Thời điểm chốt final
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    delegation_id
+    owner_user_id
+    status
+  }
+}
+
+Table ipa_minutes_version { // Lịch sử phiên bản biên bản
+  id bigint [pk, increment]
+  minutes_id bigint [not null] // FK -> ipa_minutes.id
+  version_no int [not null] // Số phiên bản
+  content_text text // Nội dung plain
+  content_json json // Nội dung cấu trúc
+  change_summary text // Ghi chú chỉnh sửa
+  edited_by bigint [not null] // FK -> ipa_user.id
+  edited_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (minutes_id, version_no) [unique]
+    (minutes_id, edited_at)
+  }
+}
+
+Table ipa_minutes_comment { // Bình luận trên biên bản
+  id bigint [pk, increment]
+  minutes_id bigint [not null] // FK -> ipa_minutes.id
+  version_id bigint // FK -> ipa_minutes_version.id
+  commenter_user_id bigint [not null] // FK -> ipa_user.id
+  parent_comment_id bigint // FK tự tham chiếu
+  comment_text text [not null] // Nội dung bình luận
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_minutes_approval { // Log phê duyệt biên bản
+  id bigint [pk, increment]
+  minutes_id bigint [not null] // FK -> ipa_minutes.id
+  approver_user_id bigint [not null] // FK -> ipa_user.id
+  decision smallint [not null] // 1 approve,2 reject
+  decision_note text // Ghi chú
+  decided_at timestamptz [not null, default: `now()`]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (minutes_id, approver_user_id)
+    minutes_id
+  }
+}
+
+Table ipa_minutes_signature { // Chữ ký biên bản
+  id bigint [pk, increment]
+  minutes_id bigint [not null] // FK -> ipa_minutes.id
+  signer_user_id bigint // FK -> ipa_user.id
+  signer_name varchar(150) [not null] // Tên người ký
+  signer_role varchar(120) // Vai trò
+  signature_file_id bigint // FK -> ipa_file.id
+  signed_at timestamptz // Thời điểm ký
+  created_at timestamptz [not null, default: `now()`]
+}
+
+
+/* =========================
+  E) TASK (5)
+========================= */
+
+Table ipa_task { // Nhiệm vụ tổng quát
+  id bigint [pk, increment]
+  delegation_id bigint // FK -> ipa_delegation.id
+  event_id bigint // FK -> ipa_event.id
+  minutes_id bigint // FK -> ipa_minutes.id
+  title varchar(255) [not null] // Tiêu đề task
+  description text // Nội dung
+  status smallint [not null, default: 0] // TASK_STATUS
+  priority smallint [not null, default: 1] // ACTION_ITEM_PRIORITY
+  due_at timestamptz // Hạn chót
+  is_overdue_cache boolean [not null, default: false] // Cache quá hạn
+  created_by bigint [not null] // FK -> ipa_user.id
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    status
+    due_at
+    created_by
+    (status, due_at)
+    (delegation_id, status)
+  }
+}
+
+Table ipa_task_assignee { // Người được giao task (N:N)
+  task_id bigint [not null] // FK -> ipa_task.id
+  user_id bigint [not null] // FK -> ipa_user.id
+  assignment_type smallint [not null, default: 1] // 0 owner,1 collaborator
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (task_id, user_id) [pk]
+    user_id
+  }
+}
+
+Table ipa_task_comment { // Bình luận task
+  id bigint [pk, increment]
+  task_id bigint [not null] // FK -> ipa_task.id
+  commenter_user_id bigint [not null] // FK -> ipa_user.id
+  comment_text text [not null] // Nội dung
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_task_attachment { // Tệp đính kèm task
+  id bigint [pk, increment]
+  task_id bigint [not null] // FK -> ipa_task.id
+  file_id bigint [not null] // FK -> ipa_file.id
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (task_id, file_id) [unique]
+  }
+}
+
+Table ipa_task_status_history { // Lịch sử chuyển trạng thái task
+  id bigint [pk, increment]
+  task_id bigint [not null] // FK -> ipa_task.id
+  old_status smallint [not null] // TASK_STATUS cũ
+  new_status smallint [not null] // TASK_STATUS mới
+  changed_by bigint [not null] // FK -> ipa_user.id
+  changed_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (task_id, changed_at)
+  }
+}
+
+
+/* =========================
+  F) DOCUMENT / FILE (5)
+========================= */
+
+Table ipa_folder { // Thư mục tài liệu
+  id bigint [pk, increment]
+  parent_folder_id bigint // FK tự tham chiếu
+  folder_name varchar(200) [not null] // Tên thư mục
+  owner_user_id bigint [not null] // FK -> ipa_user.id
+  scope_type smallint [not null, default: 0] // 0 global,1 delegation,2 minutes,3 partner
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_file { // File vật lý/logic
+  id bigint [pk, increment]
+  folder_id bigint // FK -> ipa_folder.id
+  file_name varchar(255) [not null] // Tên hiển thị
+  file_ext varchar(20) // Extension
+  mime_type varchar(120) // MIME
+  size_bytes bigint [not null] // Kích thước bytes
+  storage_key text [not null, unique] // Khóa lưu trữ object storage
+  checksum varchar(128) // Hash kiểm tra
+  uploaded_by bigint [not null] // FK -> ipa_user.id
+  delegation_id bigint // FK -> ipa_delegation.id
+  minutes_id bigint // FK -> ipa_minutes.id
+  task_id bigint // FK -> ipa_task.id
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    folder_id
+    uploaded_by
+    delegation_id
+    minutes_id
+    task_id
+  }
+}
+
+Table ipa_file_version { // Phiên bản file
+  id bigint [pk, increment]
+  file_id bigint [not null] // FK -> ipa_file.id
+  version_no int [not null] // Số version
+  storage_key text [not null, unique] // Key lưu version
+  size_bytes bigint [not null] // Size
+  updated_by bigint [not null] // FK -> ipa_user.id
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (file_id, version_no) [unique]
+  }
+}
+
+Table ipa_file_share { // Chia sẻ file theo user/role
+  id bigint [pk, increment]
+  file_id bigint [not null] // FK -> ipa_file.id
+  shared_with_user_id bigint // FK -> ipa_user.id
+  shared_with_role_id bigint // FK -> ipa_role.id
+  permission_level smallint [not null, default: 0] // 0 view,1 edit,2 download
+  expires_at timestamptz // Hết hạn quyền
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_file_access_log { // Nhật ký truy cập file
+  id bigint [pk, increment]
+  file_id bigint [not null] // FK -> ipa_file.id
+  user_id bigint [not null] // FK -> ipa_user.id
+  action smallint [not null] // 0 view,1 download,2 share,3 delete
+  ip_address varchar(64) // IP truy cập
+  action_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (file_id, action_at)
+    (user_id, action_at)
+  }
+}
+
+
+/* =========================
+  G) PARTNER CRM (5)
+========================= */
+
+Table ipa_partner { // Hồ sơ đối tác
+  id bigint [pk, increment]
+  partner_code varchar(50) [not null, unique] // Mã đối tác
+  partner_name varchar(255) [not null] // Tên đối tác
+  country_id bigint [not null] // FK -> ipa_country.id
+  sector_id bigint [not null] // FK -> ipa_md_sector.id
+  status smallint [not null, default: 0] // PARTNER_STATUS
+  score numeric(3,2) // Điểm đánh giá 0..5
+  website text // Website
+  notes text // Ghi chú
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  deleted_at timestamptz
+
+  indexes {
+    country_id
+    sector_id
+    status
+    (country_id, status)
+  }
+}
+
+Table ipa_partner_contact { // Liên hệ đối tác
+  id bigint [pk, increment]
+  partner_id bigint [not null] // FK -> ipa_partner.id
+  full_name varchar(150) [not null] // Người liên hệ
+  title varchar(120) // Chức vụ
+  email varchar(255) // Email
+  phone varchar(20) // Phone
+  is_primary boolean [not null, default: false] // Contact chính
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    partner_id
+    (partner_id, is_primary)
+  }
+}
+
+Table ipa_partner_project { // Dự án hợp tác với đối tác
+  id bigint [pk, increment]
+  partner_id bigint [not null] // FK -> ipa_partner.id
+  delegation_id bigint // FK -> ipa_delegation.id
+  project_name varchar(255) [not null] // Tên dự án
+  stage_id bigint [not null] // FK -> ipa_md_pipeline_stage.id
+  estimated_value numeric(18,2) // Giá trị ước tính
+  success_probability numeric(5,2) // Xác suất thành công 0..100
+  status smallint [not null, default: 0] // 0 open,1 won,2 lost
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    partner_id
+    stage_id
+    (stage_id, success_probability)
+  }
+}
+
+Table ipa_partner_interaction { // Lịch sử tương tác CRM
+  id bigint [pk, increment]
+  partner_id bigint [not null] // FK -> ipa_partner.id
+  interaction_type smallint [not null] // 0 meeting,1 email,2 call,3 visit
+  interaction_at timestamptz [not null] // Thời điểm tương tác
+  owner_user_id bigint [not null] // FK -> ipa_user.id
+  summary text // Nội dung
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (partner_id, interaction_at)
+    owner_user_id
+  }
+}
+
+Table ipa_partner_score_history { // Lịch sử thay đổi điểm đối tác
+  id bigint [pk, increment]
+  partner_id bigint [not null] // FK -> ipa_partner.id
+  old_score numeric(3,2) [not null] // Điểm cũ
+  new_score numeric(3,2) [not null] // Điểm mới
+  reason text // Lý do đổi điểm
+  changed_by bigint [not null] // FK -> ipa_user.id
+  changed_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (partner_id, changed_at)
+  }
+}
+
+
+/* =========================
+  H) APPROVAL FLOW (3)
+========================= */
+
+Table ipa_approval_request { // Phiếu yêu cầu phê duyệt
+  id bigint [pk, increment]
+  request_type varchar(40) [not null] // delegation/schedule/minutes/...
+  ref_table varchar(80) [not null] // Bảng tham chiếu
+  ref_id bigint [not null] // ID bản ghi tham chiếu
+  requester_user_id bigint [not null] // FK -> ipa_user.id
+  current_step int [not null, default: 1] // Bước hiện tại
+  priority smallint [not null, default: 1] // ACTION_ITEM_PRIORITY
+  due_at timestamptz // Hạn xử lý
+  status smallint [not null, default: 0] // APPROVAL_STATUS
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (ref_table, ref_id)
+    (status, due_at)
+    requester_user_id
+  }
+}
+
+Table ipa_approval_step { // Các bước duyệt theo thứ tự
+  id bigint [pk, increment]
+  approval_request_id bigint [not null] // FK -> ipa_approval_request.id
+  approver_user_id bigint [not null] // FK -> ipa_user.id
+  step_order int [not null] // Thứ tự bước
+  decision smallint [not null, default: 0] // APPROVAL_ACTION
+  decision_note text // Ghi chú
+  decided_at timestamptz // Lúc ra quyết định
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (approval_request_id, step_order) [unique]
+    approver_user_id
+  }
+}
+
+Table ipa_approval_history { // Nhật ký đổi trạng thái phiếu duyệt
+  id bigint [pk, increment]
+  approval_request_id bigint [not null] // FK -> ipa_approval_request.id
+  old_status smallint [not null] // APPROVAL_STATUS cũ
+  new_status smallint [not null] // APPROVAL_STATUS mới
+  changed_by bigint [not null] // FK -> ipa_user.id
+  changed_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (approval_request_id, changed_at)
+  }
+}
+
+
+/* =========================
+  I) NOTIFICATION (4)
+========================= */
+
+Table ipa_notification { // Notification tổng
+  id bigint [pk, increment]
+  notification_type_id bigint [not null] // FK -> ipa_md_notification_type.id
+  title varchar(255) [not null] // Tiêu đề
+  body text [not null] // Nội dung
+  ref_table varchar(80) // Bảng liên quan
+  ref_id bigint // ID liên quan
+  severity smallint [not null, default: 0] // 0 info,1 warning,2 critical
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    notification_type_id
+    (ref_table, ref_id)
+    created_at
+  }
+}
+
+Table ipa_notification_recipient { // Trạng thái gửi/đọc theo user
+  id bigint [pk, increment]
+  notification_id bigint [not null] // FK -> ipa_notification.id
+  recipient_user_id bigint [not null] // FK -> ipa_user.id
+  delivery_status smallint [not null, default: 0] // NOTIFY_STATUS
+  read_at timestamptz // Thời điểm đọc
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (notification_id, recipient_user_id) [unique]
+    (recipient_user_id, delivery_status, created_at)
+  }
+}
+
+Table ipa_notification_channel { // Kênh gửi thực tế
+  id bigint [pk, increment]
+  notification_id bigint [not null] // FK -> ipa_notification.id
+  channel_type smallint [not null] // NOTIFY_CHANNEL
+  provider_message_id varchar(120) // ID từ provider
+  sent_at timestamptz // Thời điểm gửi
+  fail_reason text // Lý do fail
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (channel_type, sent_at)
+    notification_id
+  }
+}
+
+Table ipa_message_template { // Template email/in-app/zalo
+  id bigint [pk, increment]
+  template_code varchar(80) [not null] // Mã template
+  channel_type smallint [not null] // NOTIFY_CHANNEL
+  language_code varchar(10) [not null, default: 'vi'] // vi/en/ja...
+  subject_template text // Subject
+  body_template text [not null] // Body
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (template_code, channel_type, language_code) [unique]
+  }
+}
+
+
+/* =========================
+  J) REPORTING + PIPELINE (6)
+========================= */
+
+Table ipa_report_definition { // Cấu hình mẫu báo cáo
+  id bigint [pk, increment]
+  report_code varchar(60) [not null, unique] // Mã báo cáo
+  report_name varchar(200) [not null] // Tên báo cáo
+  scope_type smallint [not null] // 0 unit,1 city,2 strategy
+  owner_role_id bigint // FK -> ipa_role.id
+  query_config json // Cấu hình query/filter
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_report_run { // Lần chạy báo cáo
+  id bigint [pk, increment]
+  report_definition_id bigint [not null] // FK -> ipa_report_definition.id
+  run_by bigint [not null] // FK -> ipa_user.id
+  params_json json // Params runtime
+  output_file_id bigint // FK -> ipa_file.id
+  status smallint [not null, default: 0] // REPORT_RUN_STATUS
+  started_at timestamptz [not null, default: `now()`] // Bắt đầu
+  finished_at timestamptz // Kết thúc
+  error_message text // Lỗi nếu fail
+
+  indexes {
+    (report_definition_id, started_at)
+    (status, started_at)
+  }
+}
+
+Table ipa_kpi_metric { // Danh mục KPI
+  id bigint [pk, increment]
+  metric_code varchar(60) [not null, unique] // Mã KPI
+  metric_name varchar(200) [not null] // Tên KPI
+  unit varchar(30) [not null] // %, USD, count...
+  scope_type smallint [not null] // 0 unit,1 city,2 partner,3 pipeline
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_kpi_snapshot { // Snapshot KPI theo thời gian
+  id bigint [pk, increment]
+  metric_id bigint [not null] // FK -> ipa_kpi_metric.id
+  snapshot_date date [not null] // Ngày snapshot
+  org_unit_id bigint // FK -> ipa_org_unit.id
+  country_id bigint // FK -> ipa_country.id
+  value_numeric numeric(20,4) // Giá trị số
+  value_text varchar(255) // Giá trị text
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (metric_id, snapshot_date, org_unit_id, country_id) [unique]
+    (snapshot_date, org_unit_id)
+  }
+}
+
+Table ipa_pipeline_project { // Cơ hội đầu tư trong pipeline
+  id bigint [pk, increment]
+  project_code varchar(60) [not null, unique] // Mã cơ hội
+  project_name varchar(255) [not null] // Tên cơ hội
+  partner_id bigint // FK -> ipa_partner.id
+  country_id bigint [not null] // FK -> ipa_country.id
+  sector_id bigint [not null] // FK -> ipa_md_sector.id
+  delegation_id bigint // FK -> ipa_delegation.id (Đoàn công tác liên quan)
+  stage_id bigint [not null] // FK -> ipa_md_pipeline_stage.id
+  estimated_value numeric(18,2) // Giá trị ước tính
+  success_probability numeric(5,2) // 0..100
+  expected_close_date date // Dự kiến chốt
+  owner_user_id bigint [not null] // FK -> ipa_user.id
+  status smallint [not null, default: 0] // 0 open,1 won,2 lost
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (stage_id, success_probability)
+    (owner_user_id, stage_id)
+  }
+}
+
+Table ipa_pipeline_stage_history { // Lịch sử đổi stage
+  id bigint [pk, increment]
+  pipeline_project_id bigint [not null] // FK -> ipa_pipeline_project.id
+  old_stage_id bigint [not null] // FK -> ipa_md_pipeline_stage.id
+  new_stage_id bigint [not null] // FK -> ipa_md_pipeline_stage.id
+  changed_by bigint [not null] // FK -> ipa_user.id
+  changed_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (pipeline_project_id, changed_at)
+  }
+}
+
+
+/* =========================
+  K) MASTER DATA + CONFIG (15)
+========================= */
+
+Table ipa_country { // Danh mục quốc gia
+  id bigint [pk, increment]
+  code varchar(10) [not null, unique] // ISO/internal code
+  name_vi varchar(255) [not null] // Tên VI
+  name_en varchar(255) // Tên EN
+  is_active boolean [not null, default: true] // Bật/tắt
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_md_delegation_type { // Danh mục loại đoàn
+  id bigint [pk, increment]
+  code varchar(30) [not null, unique] // INBOUND/OUTBOUND/...
+  name_vi varchar(120) [not null] // Tên loại
+  is_active boolean [not null, default: true]
+  sort_order int [not null, default: 0]
+}
+
+Table ipa_md_priority { // Danh mục mức ưu tiên
+  id bigint [pk, increment]
+  code varchar(30) [not null, unique] // LOW/MEDIUM/HIGH/URGENT
+  name_vi varchar(120) [not null]
+  weight int [not null, default: 0] // Trọng số sort
+  is_active boolean [not null, default: true]
+}
+
+Table ipa_md_event_type { // Danh mục loại sự kiện
+  id bigint [pk, increment]
+  code varchar(30) [not null, unique] // MEETING/SITE_VISIT/...
+  name_vi varchar(120) [not null]
+  is_active boolean [not null, default: true]
+}
+
+Table ipa_md_workflow_status { // Danh mục trạng thái workflow dùng chung
+  id bigint [pk, increment]
+  domain_code varchar(40) [not null] // delegation/event/generic
+  code varchar(40) [not null] // DRAFT/APPROVED...
+  name_vi varchar(120) [not null]
+  sort_order int [not null, default: 0]
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (domain_code, code) [unique]
+  }
+}
+
+Table ipa_md_task_status { // Danh mục trạng thái task
+  id bigint [pk, increment]
+  code varchar(30) [not null, unique] // TODO/DOING/DONE/CANCELLED
+  name_vi varchar(120) [not null]
+  is_terminal boolean [not null, default: false] // Trạng thái kết thúc
+  is_active boolean [not null, default: true]
+}
+
+Table ipa_md_minutes_status { // Danh mục trạng thái biên bản
+  id bigint [pk, increment]
+  code varchar(30) [not null, unique] // DRAFT/INTERNAL/FINAL/...
+  name_vi varchar(120) [not null]
+  is_active boolean [not null, default: true]
+}
+
+Table ipa_md_partner_status { // Danh mục trạng thái đối tác
+  id bigint [pk, increment]
+  code varchar(30) [not null, unique] // LEAD/PARTNER/ACTIVE/...
+  name_vi varchar(120) [not null]
+  is_active boolean [not null, default: true]
+}
+
+Table ipa_md_approval_status { // Danh mục trạng thái duyệt
+  id bigint [pk, increment]
+  code varchar(30) [not null, unique] // PENDING/APPROVED/REJECTED
+  name_vi varchar(120) [not null]
+  is_active boolean [not null, default: true]
+}
+
+Table ipa_md_notification_type { // Danh mục loại thông báo
+  id bigint [pk, increment]
+  code varchar(50) [not null, unique] // assignment/approval/system...
+  name_vi varchar(120) [not null]
+  default_channel smallint [not null, default: 0] // NOTIFY_CHANNEL
+  is_active boolean [not null, default: true]
+}
+
+Table ipa_md_pipeline_stage { // Danh mục stage pipeline
+  id bigint [pk, increment]
+  code varchar(40) [not null, unique] // CONNECTED/SURVEY/...
+  name_vi varchar(120) [not null]
+  stage_order int [not null, default: 0]
+  is_active boolean [not null, default: true]
+}
+
+Table ipa_md_sector { // Danh mục lĩnh vực đầu tư
+  id bigint [pk, increment]
+  code varchar(40) [not null, unique] // ICT/SEMICON/LOGISTICS/...
+  name_vi varchar(120) [not null]
+  is_active boolean [not null, default: true]
+}
+
+Table ipa_system_setting { // Cấu hình hệ thống
+  id bigint [pk, increment]
+  setting_key varchar(100) [not null, unique] // smtp.host, zalo.app_id...
+  setting_group varchar(50) [not null] // smtp/zalo/security/branding
+  setting_value text // Value plain
+  encrypted_value text // Value secret mã hóa
+  is_secret boolean [not null, default: false] // Có phải secret
+  updated_by bigint // FK -> ipa_user.id
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_integration_endpoint { // Cấu hình endpoint tích hợp
+  id bigint [pk, increment]
+  provider_code varchar(40) [not null, unique] // SMTP/ZALO/OUTLOOK
+  base_url text // URL API
+  app_id varchar(120) // App ID
+  secret_ref varchar(255) // Ref secret manager
+  status smallint [not null, default: 1] // INTEGRATION_STATUS
+  last_check_at timestamptz // Lần check gần nhất
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table ipa_integration_health_log { // Nhật ký health-check integration
+  id bigint [pk, increment]
+  integration_id bigint [not null] // FK -> ipa_integration_endpoint.id
+  check_time timestamptz [not null, default: `now()`] // Thời điểm check
+  status smallint [not null] // 0 ok,1 warn,2 error
+  latency_ms int // Độ trễ
+  message text // Message debug
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (integration_id, check_time)
+    (status, check_time)
+  }
+}
+
+
+/* =========================
+  L) SECURITY + AUDIT + HISTORY (7)
+========================= */
+
+Table ipa_auth_session { // Phiên đăng nhập + refresh token
+  id bigint [pk, increment]
+  user_id bigint [not null] // FK -> ipa_user.id
+  access_token_jti varchar(120) [not null, unique] // Token ID
+  refresh_token_hash varchar(255) [not null] // Hash refresh token
+  ip_address varchar(64) // IP
+  user_agent text // User-Agent
+  issued_at timestamptz [not null, default: `now()`] // Phát hành
+  expires_at timestamptz [not null] // Hết hạn
+  revoked_at timestamptz // Thu hồi
+
+  indexes {
+    (user_id, expires_at)
+    revoked_at
+  }
+}
+
+Table ipa_password_history { // Lịch sử mật khẩu
+  id bigint [pk, increment]
+  user_id bigint [not null] // FK -> ipa_user.id
+  password_hash varchar(255) [not null] // Hash password
+  changed_at timestamptz [not null, default: `now()`] // Lúc đổi
+
+  indexes {
+    (user_id, changed_at)
+  }
+}
+
+Table ipa_login_attempt { // Nhật ký thử đăng nhập
+  id bigint [pk, increment]
+  username_or_email varchar(255) [not null] // Account input
+  ip_address varchar(64) // IP
+  is_success boolean [not null, default: false] // Thành công hay không
+  reason varchar(255) // Lý do fail
+  attempted_at timestamptz [not null, default: `now()`] // Lúc thử
+
+  indexes {
+    (username_or_email, attempted_at)
+    (ip_address, attempted_at)
+  }
+}
+
+Table ipa_audit_log { // Audit log thao tác hệ thống
+  id bigint [pk, increment]
+  actor_user_id bigint // FK -> ipa_user.id
+  action varchar(80) [not null] // CREATE/UPDATE/DELETE/APPROVE...
+  resource_type varchar(80) [not null] // delegation/task/file...
+  resource_id bigint // ID resource
+  before_json json // Dữ liệu trước
+  after_json json // Dữ liệu sau
+  ip_address varchar(64) // IP
+  user_agent text // User-agent
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (resource_type, resource_id, created_at)
+    (actor_user_id, created_at)
+    (action, created_at)
+  }
+}
+
+Table ipa_domain_event { // Event domain (event sourcing/outbox upstream)
+  id bigint [pk, increment]
+  event_name varchar(120) [not null] // Tên event
+  aggregate_type varchar(80) [not null] // delegation/task/...
+  aggregate_id bigint [not null] // ID aggregate
+  payload_json json [not null] // Payload
+  occurred_at timestamptz [not null, default: `now()`] // Lúc phát sinh
+  published_at timestamptz // Lúc publish bus
+
+  indexes {
+    (aggregate_type, aggregate_id, occurred_at)
+    (event_name, occurred_at)
+  }
+}
+
+Table ipa_outbox_event { // Outbox gửi async integration
+  id bigint [pk, increment]
+  event_type varchar(120) [not null] // Type event
+  payload_json json [not null] // Payload
+  status smallint [not null, default: 0] // 0 pending,1 processing,2 sent,3 failed
+  retry_count int [not null, default: 0] // Số lần retry
+  next_retry_at timestamptz // Retry tiếp theo
+  created_at timestamptz [not null, default: `now()`] // Lúc tạo
+
+  indexes {
+    (status, next_retry_at)
+    created_at
+  }
+}
+
+Table ipa_data_change_history { // Lịch sử thay đổi dữ liệu chuẩn hóa
+  id bigint [pk, increment]
+  table_name varchar(120) [not null] // Tên bảng
+  row_id bigint [not null] // ID bản ghi
+  operation smallint [not null] // 0 insert,1 update,2 delete
+  diff_json json [not null] // Delta dữ liệu
+  changed_by bigint // FK -> ipa_user.id
+  changed_at timestamptz [not null, default: `now()`] // Lúc thay đổi
+
+  indexes {
+    (table_name, row_id, changed_at)
+    changed_by
+  }
+}
+
+Table master_data_items { // Danh mục dùng chung (Master Data V2)
+  id uuid [pk] // Khóa chính UUID
+  domain varchar(100) [not null] // Miền dữ liệu (ví dụ: delegation_priority)
+  code varchar(100) [not null] // Mã code
+  name_vi varchar(255) [not null] // Tên (Tiếng Việt)
+  name_en varchar(255) // Tên (Tiếng Anh)
+  sort_order int [not null, default: 0] // Thứ tự sắp xếp
+  is_active boolean [not null, default: true] // Trạng thái hoạt động
+  created_by bigint // Người tạo
+  updated_by bigint // Người cập nhật
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  deleted_at timestamptz
+
+  indexes {
+    domain
+    (domain, code) [unique]
+  }
+}
+
+Table ipa_delegation_partner_link { // Pivot kết nối Đoàn công tác và Đối tác
+  id bigint [pk, increment]
+  delegation_id bigint [not null] // FK -> ipa_delegation.id
+  partner_id bigint [not null] // FK -> ipa_partner.id
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (delegation_id, partner_id)
+  }
+}
+
+Table ipa_delegation_sector_link { // Pivot kết nối Đoàn công tác và Lĩnh vực
+  id bigint [pk, increment]
+  delegation_id bigint [not null] // FK -> ipa_delegation.id
+  sector_id bigint [not null] // FK -> ipa_md_sector.id
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (delegation_id, sector_id)
+  }
+}
+
+
+/* =========================
+  FK RELATIONSHIPS
+========================= */
+
+Ref: ipa_user.primary_unit_id > ipa_org_unit.id
+Ref: ipa_org_unit.parent_unit_id > ipa_org_unit.id
+Ref: ipa_org_unit.manager_user_id > ipa_user.id
+Ref: ipa_user_unit_assignment.user_id > ipa_user.id
+Ref: ipa_user_unit_assignment.unit_id > ipa_org_unit.id
+
+Ref: ipa_role_permission.role_id > ipa_role.id
+Ref: ipa_role_permission.permission_id > ipa_permission.id
+Ref: ipa_user_role.user_id > ipa_user.id
+Ref: ipa_user_role.role_id > ipa_role.id
+
+Ref: ipa_delegation.country_id > ipa_country.id
+Ref: ipa_delegation.host_unit_id > ipa_org_unit.id
+Ref: ipa_delegation.owner_user_id > ipa_user.id
+Ref: ipa_delegation_member.delegation_id > ipa_delegation.id
+Ref: ipa_delegation_contact.delegation_id > ipa_delegation.id
+Ref: ipa_delegation_contact.partner_contact_id > ipa_partner_contact.id
+Ref: ipa_delegation_checklist.delegation_id > ipa_delegation.id
+Ref: ipa_delegation_checklist.assignee_user_id > ipa_user.id
+Ref: ipa_delegation_outcome.delegation_id > ipa_delegation.id
+Ref: ipa_delegation_tag_link.delegation_id > ipa_delegation.id
+Ref: ipa_delegation_tag_link.tag_id > ipa_delegation_tag.id
+
+Ref: ipa_location.country_id > ipa_country.id
+Ref: ipa_event.delegation_id > ipa_delegation.id
+Ref: ipa_event.location_id > ipa_location.id
+Ref: ipa_event.organizer_user_id > ipa_user.id
+Ref: ipa_event.staff_id > ipa_user.id
+Ref: ipa_event_participant.event_id > ipa_event.id
+Ref: ipa_event_participant.user_id > ipa_user.id
+Ref: ipa_event_external_participant.event_id > ipa_event.id
+Ref: ipa_event_reschedule_request.event_id > ipa_event.id
+Ref: ipa_event_reschedule_request.requested_by > ipa_user.id
+
+Ref: ipa_minutes.delegation_id > ipa_delegation.id
+Ref: ipa_minutes.event_id > ipa_event.id
+Ref: ipa_minutes.owner_user_id > ipa_user.id
+Ref: ipa_minutes_version.minutes_id > ipa_minutes.id
+Ref: ipa_minutes_version.edited_by > ipa_user.id
+Ref: ipa_minutes_comment.minutes_id > ipa_minutes.id
+Ref: ipa_minutes_comment.version_id > ipa_minutes_version.id
+Ref: ipa_minutes_comment.commenter_user_id > ipa_user.id
+Ref: ipa_minutes_comment.parent_comment_id > ipa_minutes_comment.id
+Ref: ipa_minutes_approval.minutes_id > ipa_minutes.id
+Ref: ipa_minutes_approval.approver_user_id > ipa_user.id
+Ref: ipa_minutes_signature.minutes_id > ipa_minutes.id
+Ref: ipa_minutes_signature.signer_user_id > ipa_user.id
+Ref: ipa_minutes_signature.signature_file_id > ipa_file.id
+
+Ref: ipa_task.delegation_id > ipa_delegation.id
+Ref: ipa_task.event_id > ipa_event.id
+Ref: ipa_task.minutes_id > ipa_minutes.id
+Ref: ipa_task.created_by > ipa_user.id
+Ref: ipa_task_assignee.task_id > ipa_task.id
+Ref: ipa_task_assignee.user_id > ipa_user.id
+Ref: ipa_task_comment.task_id > ipa_task.id
+Ref: ipa_task_comment.commenter_user_id > ipa_user.id
+Ref: ipa_task_attachment.task_id > ipa_task.id
+Ref: ipa_task_attachment.file_id > ipa_file.id
+Ref: ipa_task_status_history.task_id > ipa_task.id
+Ref: ipa_task_status_history.changed_by > ipa_user.id
+
+Ref: ipa_folder.parent_folder_id > ipa_folder.id
+Ref: ipa_folder.owner_user_id > ipa_user.id
+Ref: ipa_file.folder_id > ipa_folder.id
+Ref: ipa_file.uploaded_by > ipa_user.id
+Ref: ipa_file.delegation_id > ipa_delegation.id
+Ref: ipa_file.minutes_id > ipa_minutes.id
+Ref: ipa_file.task_id > ipa_task.id
+Ref: ipa_file_version.file_id > ipa_file.id
+Ref: ipa_file_version.updated_by > ipa_user.id
+Ref: ipa_file_share.file_id > ipa_file.id
+Ref: ipa_file_share.shared_with_user_id > ipa_user.id
+Ref: ipa_file_share.shared_with_role_id > ipa_role.id
+Ref: ipa_file_access_log.file_id > ipa_file.id
+Ref: ipa_file_access_log.user_id > ipa_user.id
+
+Ref: ipa_partner.country_id > ipa_country.id
+Ref: ipa_partner.sector_id > ipa_md_sector.id
+Ref: ipa_partner_contact.partner_id > ipa_partner.id
+Ref: ipa_partner_project.partner_id > ipa_partner.id
+Ref: ipa_partner_project.delegation_id > ipa_delegation.id
+Ref: ipa_partner_project.stage_id > ipa_md_pipeline_stage.id
+Ref: ipa_partner_interaction.partner_id > ipa_partner.id
+Ref: ipa_partner_interaction.owner_user_id > ipa_user.id
+Ref: ipa_partner_score_history.partner_id > ipa_partner.id
+Ref: ipa_partner_score_history.changed_by > ipa_user.id
+
+Ref: ipa_approval_request.requester_user_id > ipa_user.id
+Ref: ipa_approval_step.approval_request_id > ipa_approval_request.id
+Ref: ipa_approval_step.approver_user_id > ipa_user.id
+Ref: ipa_approval_history.approval_request_id > ipa_approval_request.id
+Ref: ipa_approval_history.changed_by > ipa_user.id
+
+Ref: ipa_notification.notification_type_id > ipa_md_notification_type.id
+Ref: ipa_notification_recipient.notification_id > ipa_notification.id
+Ref: ipa_notification_recipient.recipient_user_id > ipa_user.id
+Ref: ipa_notification_channel.notification_id > ipa_notification.id
+
+Ref: ipa_report_definition.owner_role_id > ipa_role.id
+Ref: ipa_report_run.report_definition_id > ipa_report_definition.id
+Ref: ipa_report_run.run_by > ipa_user.id
+Ref: ipa_report_run.output_file_id > ipa_file.id
+Ref: ipa_kpi_snapshot.metric_id > ipa_kpi_metric.id
+Ref: ipa_kpi_snapshot.org_unit_id > ipa_org_unit.id
+Ref: ipa_kpi_snapshot.country_id > ipa_country.id
+Ref: ipa_pipeline_project.partner_id > ipa_partner.id
+Ref: ipa_pipeline_project.country_id > ipa_country.id
+Ref: ipa_pipeline_project.sector_id > ipa_md_sector.id
+Ref: ipa_pipeline_project.stage_id > ipa_md_pipeline_stage.id
+Ref: ipa_pipeline_project.owner_user_id > ipa_user.id
+Ref: ipa_pipeline_project.delegation_id > ipa_delegation.id
+Ref: ipa_pipeline_stage_history.pipeline_project_id > ipa_pipeline_project.id
+Ref: ipa_pipeline_stage_history.old_stage_id > ipa_md_pipeline_stage.id
+Ref: ipa_pipeline_stage_history.new_stage_id > ipa_md_pipeline_stage.id
+Ref: ipa_pipeline_stage_history.changed_by > ipa_user.id
+
+Ref: ipa_system_setting.updated_by > ipa_user.id
+Ref: ipa_integration_health_log.integration_id > ipa_integration_endpoint.id
+
+Ref: ipa_auth_session.user_id > ipa_user.id
+Ref: ipa_password_history.user_id > ipa_user.id
+Ref: ipa_audit_log.actor_user_id > ipa_user.id
+Ref: ipa_data_change_history.changed_by > ipa_user.id
+
+Ref: ipa_delegation_partner_link.delegation_id > ipa_delegation.id
+Ref: ipa_delegation_partner_link.partner_id > ipa_partner.id
+Ref: ipa_delegation_sector_link.delegation_id > ipa_delegation.id
+Ref: ipa_delegation_sector_link.sector_id > ipa_md_sector.id
+Ref: master_data_items.created_by > ipa_user.id
+Ref: master_data_items.updated_by > ipa_user.id

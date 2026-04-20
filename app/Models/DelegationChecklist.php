@@ -13,15 +13,17 @@ class DelegationChecklist extends Model
 
     protected $fillable = [
         'delegation_id',
-        'task_name',
-        'is_completed',
+        'item_name',
+        'assignee_user_id',
         'due_date',
-        'assigned_to_user_id',
+        'status',
+        'priority',
     ];
 
     protected $casts = [
-        'is_completed' => 'boolean',
         'due_date' => 'date',
+        'status' => 'integer',
+        'priority' => 'integer',
     ];
 
     public function delegation()
@@ -31,6 +33,6 @@ class DelegationChecklist extends Model
 
     public function assignee()
     {
-        return $this->belongsTo(User::class, 'assigned_to_user_id');
+        return $this->belongsTo(AdminUser::class, 'assignee_user_id');
     }
 }

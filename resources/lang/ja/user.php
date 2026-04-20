@@ -39,7 +39,7 @@ return [
     'email_string' => 'メールアドレスは文字列でなければなりません。',
     'email_max' => 'メールアドレスは255文字以内でなければなりません。',
     'role_string' => '役割は文字列でなければなりません。',
-    'role_in' => '無効な役割です。admin、staff、userのみ受け付けます。',
+    'role_in' => '無効な役割です。admin、manager、userのみ受け付けます。',
     'phone_string' => '電話番号は文字列でなければなりません。',
     'created_at_from_date' => '開始日は有効な日付でなければなりません。',
     'created_at_from_date_format' => '開始日はY-m-d形式でなければなりません。',

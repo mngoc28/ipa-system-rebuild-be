@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 final class IpaMdSectorSeeder extends Seeder
 {
@@ -20,16 +19,15 @@ final class IpaMdSectorSeeder extends Seeder
         ];
 
         foreach ($sectors as $sector) {
-            if (DB::table('ipa_md_sector')->where('code', $sector['code'])->exists()) {
-                continue;
-            }
-
-            DB::table('ipa_md_sector')->insert([
-                ...$sector,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            DB::table('ipa_md_sector')->updateOrInsert(
+                ['code' => $sector['code']],
+                [
+                    ...$sector,
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
         }
     }
 }

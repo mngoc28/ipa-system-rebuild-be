@@ -5,87 +5,84 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 final class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->resetSeedTables();
+
         $this->call([
             IpaCountrySeeder::class,
-            IpaMdDelegationTypeSeeder::class,
-            IpaMdPrioritySeeder::class,
-            IpaMdEventTypeSeeder::class,
-            IpaMdWorkflowStatusSeeder::class,
-            IpaMdTaskStatusSeeder::class,
-            IpaMdMinutesStatusSeeder::class,
-            IpaMdPartnerStatusSeeder::class,
-            IpaMdApprovalStatusSeeder::class,
-            IpaMdNotificationTypeSeeder::class,
-            IpaMdPipelineStageSeeder::class,
             IpaMdSectorSeeder::class,
-            IpaRoleSeeder::class,
-            IpaPermissionSeeder::class,
+            IpaMdDelegationTypeSeeder::class,
+            IpaMdPartnerStatusSeeder::class,
+            IpaMdPrioritySeeder::class,
+            IpaMdTaskStatusSeeder::class,
+            IpaMdWorkflowStatusSeeder::class,
+            IpaMdPipelineStageSeeder::class,
+            IpaMdNotificationTypeSeeder::class,
             IpaOrgUnitSeeder::class,
             IpaUserSeeder::class,
-            IpaRolePermissionSeeder::class,
+            IpaRoleSeeder::class,
             IpaUserRoleSeeder::class,
-            IpaUserUnitAssignmentSeeder::class,
             IpaPartnerSeeder::class,
             IpaPartnerContactSeeder::class,
-            IpaPartnerProjectSeeder::class,
             IpaPartnerInteractionSeeder::class,
-            IpaPartnerScoreHistorySeeder::class,
-            IpaDelegationSeeder::class,
-            IpaDelegationMemberSeeder::class,
-            IpaDelegationContactSeeder::class,
-            IpaDelegationChecklistSeeder::class,
-            IpaDelegationOutcomeSeeder::class,
-            IpaDelegationTagSeeder::class,
-            IpaDelegationTagLinkSeeder::class,
             IpaLocationSeeder::class,
+            IpaDelegationSeeder::class,
+            IpaDelegationOutcomeSeeder::class,
             IpaEventSeeder::class,
-            IpaEventParticipantSeeder::class,
-            IpaEventExternalParticipantSeeder::class,
-            IpaEventRescheduleRequestSeeder::class,
-            IpaMinutesSeeder::class,
-            IpaMinutesVersionSeeder::class,
-            IpaMinutesCommentSeeder::class,
-            IpaMinutesApprovalSeeder::class,
-            IpaMinutesSignatureSeeder::class,
             IpaTaskSeeder::class,
-            IpaTaskAssigneeSeeder::class,
-            IpaTaskCommentSeeder::class,
-            IpaFolderSeeder::class,
-            IpaFileSeeder::class,
-            IpaFileVersionSeeder::class,
-            IpaFileShareSeeder::class,
-            IpaFileAccessLogSeeder::class,
-            IpaTaskAttachmentSeeder::class,
-            IpaTaskStatusHistorySeeder::class,
-            IpaApprovalRequestSeeder::class,
-            IpaApprovalStepSeeder::class,
-            IpaApprovalHistorySeeder::class,
-            IpaNotificationSeeder::class,
-            IpaNotificationRecipientSeeder::class,
-            IpaNotificationChannelSeeder::class,
-            IpaMessageTemplateSeeder::class,
-            IpaReportDefinitionSeeder::class,
-            IpaReportRunSeeder::class,
-            IpaKpiMetricSeeder::class,
-            IpaKpiSnapshotSeeder::class,
-            IpaPipelineProjectSeeder::class,
-            IpaPipelineStageHistorySeeder::class,
+            IpaEventParticipantSeeder::class,
+            IpaDelegationMemberSeeder::class,
+            IpaUserUnitAssignmentSeeder::class,
             IpaSystemSettingSeeder::class,
-            IpaIntegrationEndpointSeeder::class,
-            IpaIntegrationHealthLogSeeder::class,
-            IpaAuthSessionSeeder::class,
-            IpaPasswordHistorySeeder::class,
-            IpaLoginAttemptSeeder::class,
             IpaAuditLogSeeder::class,
-            IpaDomainEventSeeder::class,
-            IpaOutboxEventSeeder::class,
-            IpaDataChangeHistorySeeder::class,
-            IpaDataExpansionSeeder::class,
+            IpaAuthSessionSeeder::class,
+            IpaLoginAttemptSeeder::class,
+            IpaTaskCommentSeeder::class,
+            IpaLinkedChildSeeder::class,
         ]);
+    }
+
+    private function resetSeedTables(): void
+    {
+        Schema::disableForeignKeyConstraints();
+
+        $driver = DB::getDriverName();
+        $tables = match ($driver) {
+            'mysql' => array_map(
+                static fn (object $row): string => (string) (array_values((array) $row)[0] ?? ''),
+                DB::select('SHOW TABLES'),
+            ),
+            'sqlite' => array_map(
+                static fn (object $row): string => (string) $row->name,
+                DB::select("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"),
+            ),
+            'pgsql' => array_map(
+                static fn (object $row): string => (string) $row->tablename,
+                DB::select("SELECT tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema')"),
+            ),
+            'sqlsrv' => array_map(
+                static fn (object $row): string => (string) $row->TABLE_NAME,
+                DB::select("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"),
+            ),
+            default => [],
+        };
+
+        foreach ($tables as $tableName) {
+            $tableName = trim($tableName);
+
+            if ($tableName === null || $tableName === 'migrations') {
+                continue;
+            }
+
+            DB::table($tableName)->truncate();
+        }
+
+        Schema::enableForeignKeyConstraints();
     }
 }

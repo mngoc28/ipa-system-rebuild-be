@@ -25,5 +25,7 @@ return [
             ['id' => 'event_type_workshop', 'code' => 'WORKSHOP', 'name_vi' => 'Hội thảo', 'name_en' => 'Workshop', 'sort_order' => 3, 'is_active' => true],
             ['id' => 'event_type_ceremony', 'code' => 'CEREMONY', 'name_vi' => 'Lễ nghi', 'name_en' => 'Ceremony', 'sort_order' => 4, 'is_active' => true],
         ],
+        'sector' => [],
+        'location' => [],
     ],
 ];
