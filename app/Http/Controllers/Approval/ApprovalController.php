@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Approval;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\ApprovalValidation;
 use App\Services\ApprovalService;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * Manages the approval request lifecycle, including listing pending requests,
  * viewing request details, and recording approval/rejection decisions.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Approval
  */
 final class ApprovalController extends Controller
 {
@@ -131,7 +132,7 @@ final class ApprovalController extends Controller
             return $authenticatedUserId;
         }
 
-        $mockUserId = (int) $request->header('X-Mock-User-Id', 0);
+        $mockUserId = (int) $request->header('X-Mock-User-Id');
         if ($mockUserId > 0) {
             return $mockUserId;
         }

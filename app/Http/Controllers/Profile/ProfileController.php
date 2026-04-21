@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Profile;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\ProfileValidation;
 use App\Models\AdminUser;
 use App\Services\AdminUserService;
@@ -19,7 +20,7 @@ use Illuminate\Support\Str;
  * Manages the authenticated user's personal profile, including
  * avatar uploads to Cloudinary and profile information updates.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Profile
  */
 final class ProfileController extends Controller
 {
@@ -50,7 +51,7 @@ final class ProfileController extends Controller
             return $this->validateError($validator->errors(), 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
         }
 
-        /** @var AdminUser $user */
+        /** @var AdminUser|null $user */
         $user = $request->user();
 
         if (!$user) {
@@ -87,7 +88,7 @@ final class ProfileController extends Controller
      */
     public function update(Request $request): JsonResponse
     {
-        /** @var AdminUser $user */
+        /** @var AdminUser|null $user */
         $user = $request->user();
 
         if (!$user) {

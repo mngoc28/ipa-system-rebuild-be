@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
 use App\Models\Announcement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 
 /**
  * Class AnnouncementController
@@ -15,7 +16,7 @@ use App\Enums\HttpStatus;
  * Handles the lifecycle of system-wide announcements, including broadcasting information,
  * warnings, and success messages with optional scheduling.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Admin
  */
 final class AnnouncementController extends Controller
 {

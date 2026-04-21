@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Document;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\DocumentValidation;
 use App\Services\DocumentService;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * Manages virtual folders and files, including uploads, downloads,
  * sharing permissions, and scope-based organization.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Document
  */
 final class DocumentController extends Controller
 {

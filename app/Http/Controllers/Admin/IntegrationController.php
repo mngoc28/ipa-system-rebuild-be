@@ -2,25 +2,26 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\IntegrationValidation;
 use App\Services\SystemSettingService;
 use Illuminate\Http\JsonResponse;
 
 /**
- * Class AdminIntegrationController
+ * Class IntegrationController
  *
  * Manages administrative tasks related to third-party integrations,
  * such as testing connectivity and configuration for external services.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Admin
  */
-final class AdminIntegrationController extends Controller
+final class IntegrationController extends Controller
 {
     /**
-     * AdminIntegrationController constructor.
+     * IntegrationController constructor.
      *
      * @param SystemSettingService $systemSettingService
      * @param IntegrationValidation $integrationValidation

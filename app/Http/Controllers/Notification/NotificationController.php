@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Notification;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\NotificationValidation;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * Manages user notifications, including retrieval, marking as read,
  * deleting read notifications, and counting unread alerts.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Notification
  */
 final class NotificationController extends Controller
 {

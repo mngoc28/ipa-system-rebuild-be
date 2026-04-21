@@ -2,52 +2,53 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Minutes;
 
 use App\Enums\HttpStatus;
-use App\Http\Validations\EventValidation;
-use App\Services\EventService;
+use App\Http\Controllers\Controller;
+use App\Http\Validations\MinutesValidation;
+use App\Services\MinutesService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Class EventController
+ * Class MinutesController
  *
- * Manages calendar events, registrations, and rescheduling requests.
- * Orchestrates event lifecycle from creation to participation tracking.
+ * Manages the lifecycle of meeting minutes, including creation, versioning,
+ * commenting, and approval workflows.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Minutes
  */
-final class EventController extends Controller
+final class MinutesController extends Controller
 {
     /**
-     * EventController constructor.
+     * MinutesController constructor.
      *
-     * @param EventService $eventService
-     * @param EventValidation $eventValidation
+     * @param MinutesService $minutesService
+     * @param MinutesValidation $minutesValidation
      */
     public function __construct(
-        private EventService $eventService,
-        private EventValidation $eventValidation,
+        private MinutesService $minutesService,
+        private MinutesValidation $minutesValidation,
     ) {
     }
 
     /**
-     * List events with filtering and pagination.
+     * List meeting minutes with filtering and pagination.
      *
      * @param Request $request
      * @return JsonResponse
      */
     public function index(Request $request): JsonResponse
     {
-        $validator = $this->eventValidation->indexValidation($request);
+        $validator = $this->minutesValidation->indexValidation($request);
 
         if ($validator->fails()) {
             return $this->validateError($validator->errors(), 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
         }
 
-        $result = $this->eventService->getAll($request, $this->resolveUserId($request));
+        $result = $this->minutesService->getAll($request);
 
         if (! $result['success']) {
             return $this->errorResponse($result['message'], 'FETCH_FAILED', HttpStatus::BAD_REQUEST);
@@ -57,40 +58,37 @@ final class EventController extends Controller
     }
 
     /**
-     * Retrieve details for a specific event.
+     * Retrieve details for a specific set of meeting minutes.
      *
      * @param string $id
      * @return JsonResponse
      */
     public function show(string $id): JsonResponse
     {
-        $result = $this->eventService->getById($id);
+        $result = $this->minutesService->getById($id);
 
         if (! $result['success']) {
             return $this->errorResponse($result['message'], 'NOT_FOUND', HttpStatus::NOT_FOUND);
         }
 
-        return $this->successResponse([
-            'updated' => true,
-            'event' => $result['data'],
-        ], $result['message']);
+        return $this->successResponse($result['data'], $result['message']);
     }
 
     /**
-     * Create a new event.
+     * Create a new meeting minutes record.
      *
      * @param Request $request
      * @return JsonResponse
      */
     public function store(Request $request): JsonResponse
     {
-        $validator = $this->eventValidation->storeValidation($request);
+        $validator = $this->minutesValidation->storeValidation($request);
 
         if ($validator->fails()) {
             return $this->validateError($validator->errors(), 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
         }
 
-        $result = $this->eventService->create($request->all(), $this->resolveUserId($request));
+        $result = $this->minutesService->create($request->all(), $this->resolveUserId($request));
 
         if (! $result['success']) {
             return $this->errorResponse($result['message'], 'CREATE_FAILED', HttpStatus::BAD_REQUEST);
@@ -100,106 +98,88 @@ final class EventController extends Controller
     }
 
     /**
-     * Update an existing event's details.
+     * Create a new version/draft for an existing meeting minutes record.
      *
      * @param Request $request
      * @param string $id
      * @return JsonResponse
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function createVersion(Request $request, string $id): JsonResponse
     {
-        $validator = $this->eventValidation->updateValidation($request);
+        $validator = $this->minutesValidation->versionValidation($request);
 
         if ($validator->fails()) {
             return $this->validateError($validator->errors(), 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
         }
 
-        $result = $this->eventService->update($id, $request->all());
-
-        if (! $result['success']) {
-            return $this->errorResponse($result['message'], 'UPDATE_FAILED', HttpStatus::BAD_REQUEST);
+        if (! $request->filled('contentText') && ! $request->filled('contentJson')) {
+            return $this->validateError(
+                ['contentText' => [__('minutes.messages.version_content_required')]],
+                'VALIDATION_FAILED',
+                HttpStatus::VALIDATION_ERROR
+            );
         }
 
-        return $this->successResponse($result['data'], $result['message']);
-    }
-
-    /**
-     * Remove an event from the system.
-     *
-     * @param string $id
-     * @return JsonResponse
-     */
-    public function destroy(string $id): JsonResponse
-    {
-        $result = $this->eventService->delete($id);
-
-        if (! $result['success']) {
-            return $this->errorResponse($result['message'], 'DELETE_FAILED', HttpStatus::BAD_REQUEST);
-        }
-
-        return $this->successResponse(null, $result['message']);
-    }
-
-    /**
-     * Record a user's participation status (join/leave) for an event.
-     *
-     * @param Request $request
-     * @param string $id
-     * @return JsonResponse
-     */
-    public function join(Request $request, string $id): JsonResponse
-    {
-        $validator = $this->eventValidation->joinValidation($request);
-
-        if ($validator->fails()) {
-            return $this->validateError($validator->errors(), 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
-        }
-
-        $userId = $this->resolveUserId($request);
-        if ($userId <= 0) {
-            return $this->errorResponse(__('auth.unauthenticated'), 'UNAUTHORIZED', HttpStatus::UNAUTHORIZED);
-        }
-
-        $result = $this->eventService->join($id, $userId, (bool) $request->boolean('joined'));
-
-        if (! $result['success']) {
-            return $this->errorResponse($result['message'], 'UPDATE_FAILED', HttpStatus::BAD_REQUEST);
-        }
-
-        return $this->successResponse($result['data'], $result['message']);
-    }
-
-    /**
-     * Submit a request to reschedule an event.
-     *
-     * @param Request $request
-     * @param string $id
-     * @return JsonResponse
-     */
-    public function requestReschedule(Request $request, string $id): JsonResponse
-    {
-        $validator = $this->eventValidation->rescheduleValidation($request);
-
-        if ($validator->fails()) {
-            return $this->validateError($validator->errors(), 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
-        }
-
-        $requestedBy = $this->resolveUserId($request);
-        if ($requestedBy <= 0) {
-            return $this->errorResponse(__('auth.unauthenticated'), 'UNAUTHORIZED', HttpStatus::UNAUTHORIZED);
-        }
-
-        $result = $this->eventService->requestReschedule($id, $request->all(), $requestedBy);
+        $result = $this->minutesService->createVersion($id, $request->all(), $this->resolveUserId($request));
 
         if (! $result['success']) {
             return $this->errorResponse($result['message'], 'CREATE_FAILED', HttpStatus::BAD_REQUEST);
         }
 
         return $this->createdResponse($result['data'], $result['message']);
+    }
+
+    /**
+     * Add a comment to a meeting minutes record.
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function createComment(Request $request, string $id): JsonResponse
+    {
+        $validator = $this->minutesValidation->commentValidation($request);
+
+        if ($validator->fails()) {
+            return $this->validateError($validator->errors(), 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
+        }
+
+        $result = $this->minutesService->createComment($id, $request->all(), $this->resolveUserId($request));
+
+        if (! $result['success']) {
+            return $this->errorResponse($result['message'], 'CREATE_FAILED', HttpStatus::BAD_REQUEST);
+        }
+
+        return $this->createdResponse($result['data'], $result['message']);
+    }
+
+    /**
+     * Record an approval or rejection for a meeting minutes record.
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function approve(Request $request, string $id): JsonResponse
+    {
+        $validator = $this->minutesValidation->approveValidation($request);
+
+        if ($validator->fails()) {
+            return $this->validateError($validator->errors(), 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
+        }
+
+        $result = $this->minutesService->approve($id, $request->all(), $this->resolveUserId($request));
+
+        if (! $result['success']) {
+            return $this->errorResponse($result['message'], 'UPDATE_FAILED', HttpStatus::BAD_REQUEST);
+        }
+
+        return $this->successResponse($result['data'], $result['message']);
     }
 
     /**
      * Resolves the user identity for the current request.
+     * Supports authenticated users and mock overrides for development.
      *
      * @param Request $request
      * @return int User ID.
@@ -212,15 +192,16 @@ final class EventController extends Controller
             return $authenticatedUserId;
         }
 
-        if (! app()->environment(['local', 'development', 'testing'])) {
-            return 0;
+        $mockUserId = (int) $request->header('X-Mock-User-Id');
+        if ($mockUserId > 0) {
+            return $mockUserId;
         }
 
         $mockUsername = trim((string) $request->header('X-Mock-Username', ''));
         $mockEmail = trim((string) $request->header('X-Mock-Email', ''));
 
         if ($mockUsername === '' && $mockEmail === '') {
-            return 0;
+            return (int) (DB::table('ipa_user')->min('id') ?? 0);
         }
 
         $query = DB::table('ipa_user')->select('id');
@@ -236,6 +217,6 @@ final class EventController extends Controller
             $query->where('email', $mockEmail);
         }
 
-        return (int) ($query->value('id') ?? 0);
+        return (int) ($query->value('id') ?? DB::table('ipa_user')->min('id') ?? 0);
     }
 }

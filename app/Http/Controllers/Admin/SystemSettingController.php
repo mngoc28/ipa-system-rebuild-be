@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\SystemSettingValidation;
 use App\Services\SystemSettingService;
 use App\Models\SystemSetting;
@@ -14,7 +15,6 @@ use App\Models\Announcement;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -25,7 +25,7 @@ use Throwable;
  * Manages global system configurations and provides operational
  * health statistics for the administration dashboard.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Admin
  */
 final class SystemSettingController extends Controller
 {

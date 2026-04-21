@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Delegation;
 
+use App\Http\Controllers\Controller;
 use App\Http\Validations\DelegationValidation;
 use App\Services\DelegationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Class DelegationController
@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
  * Manages the investment delegation lifecycle, including CRUD operations,
  * commenting (with mentions), and activity tracking for incoming/outgoing delegations.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Delegation
  */
 class DelegationController extends Controller
 {
@@ -299,9 +299,6 @@ class DelegationController extends Controller
         return response()->json($result);
     }
 
-    /**
-     * Resolve user ID from request (Mocking auth for development)
-     */
     /**
      * Resolve user ID from request (Mocking auth for development).
      *

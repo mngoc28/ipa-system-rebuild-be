@@ -2,28 +2,27 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\AdminIntegrationController;
-use App\Http\Controllers\AdminMaintenanceController;
-use App\Http\Controllers\AdminUserController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\MasterDataController;
-use App\Http\Controllers\EventController;
-use App\Http\Controllers\PipelineController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\SystemSettingController;
-use App\Http\Controllers\PartnerController;
-use App\Http\Controllers\TaskController;
-use App\Http\Controllers\DelegationController;
-use App\Http\Controllers\MinutesController;
-use App\Http\Controllers\AnnouncementController;
-use App\Http\Controllers\ApprovalController;
-use App\Http\Controllers\DocumentController;
-use App\Http\Controllers\TeamController;
-use App\Http\Controllers\ProfileController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Admin\IntegrationController as AdminIntegrationController;
+use App\Http\Controllers\Admin\MaintenanceController as AdminMaintenanceController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\MasterData\MasterDataController;
+use App\Http\Controllers\Event\EventController;
+use App\Http\Controllers\Pipeline\PipelineController;
+use App\Http\Controllers\Report\ReportController;
+use App\Http\Controllers\Notification\NotificationController;
+use App\Http\Controllers\Admin\SystemSettingController;
+use App\Http\Controllers\Partner\PartnerController;
+use App\Http\Controllers\Task\TaskController;
+use App\Http\Controllers\Delegation\DelegationController;
+use App\Http\Controllers\Minutes\MinutesController;
+use App\Http\Controllers\Admin\AnnouncementController;
+use App\Http\Controllers\Approval\ApprovalController;
+use App\Http\Controllers\Document\DocumentController;
+use App\Http\Controllers\Team\TeamController;
+use App\Http\Controllers\Profile\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
