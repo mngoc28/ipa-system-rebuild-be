@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\MasterData;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\MasterDataValidation;
 use App\Services\MasterDataService;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,7 @@ use Illuminate\Http\Request;
  * Orchestrates CRUD operations for dynamic master data domains (sectors, countries, etc.).
  * Uses a domain-based routing pattern to handle multiple metadata types.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\MasterData
  */
 final class MasterDataController extends Controller
 {

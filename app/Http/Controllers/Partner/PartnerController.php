@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Partner;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Models\PartnerContact;
 use App\Models\PartnerInteraction;
 use App\Http\Validations\PartnerValidation;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  * Manages investment partners and organizations, including contacts,
  * interaction tracking, and organization profiles.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Partner
  */
 final class PartnerController extends Controller
 {

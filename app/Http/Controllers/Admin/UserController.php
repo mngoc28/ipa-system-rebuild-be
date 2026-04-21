@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\AdminUserValidation;
 use App\Http\Validations\ProfileValidation;
 use App\Services\AdminUserService;
@@ -14,17 +15,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
- * Class AdminUserController
+ * Class UserController
  *
  * Handles administrative user management, including profile updates, role assignments,
  * account locking, and avatar management.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Admin
  */
-final class AdminUserController extends Controller
+final class UserController extends Controller
 {
     /**
-     * AdminUserController constructor.
+     * UserController constructor.
      *
      * @param AdminUserService $adminUserService
      * @param AdminUserValidation $adminUserValidation
@@ -36,8 +37,6 @@ final class AdminUserController extends Controller
         private ProfileValidation $profileValidation,
     ) {
     }
-
-    // ... (index, show, store, update, lock, destroy methods omitted for space in target content, but I'll replace everything from imports onwards)
 
     /**
      * List all administrative users with search and pagination.

@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Dashboard;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Services\TaskService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  * Provides aggregated statistics and summary data for various system modules,
  * tailored to the user's role and scope (Staff, Manager, Director, Admin).
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Dashboard
  */
 final class DashboardController extends Controller
 {

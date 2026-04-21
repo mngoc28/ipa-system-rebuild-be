@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Pipeline;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\PipelineValidation;
 use App\Services\PipelineService;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,7 @@ use Illuminate\Http\Request;
  * Manages the investment pipeline (Kanban), including project lifecycle stages,
  * valuation tracking, and stage transitions.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Pipeline
  */
 final class PipelineController extends Controller
 {

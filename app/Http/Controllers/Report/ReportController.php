@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Report;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\ReportValidation;
 use App\Services\ReportService;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,7 @@ use Illuminate\Http\Request;
  * Manages system reporting, including report definitions,
  * execution of report runs, and retrieval of generated report data.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Report
  */
 final class ReportController extends Controller
 {

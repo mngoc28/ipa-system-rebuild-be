@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Task;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\TaskValidation;
 use App\Services\TaskService;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * Manages system tasks and assignments, including CRUD operations,
  * commenting, and file attachments for operational workflows.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Task
  */
 final class TaskController extends Controller
 {

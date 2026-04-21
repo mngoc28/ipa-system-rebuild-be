@@ -2,22 +2,23 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
 use Throwable;
 
 /**
- * Class AdminMaintenanceController
+ * Class MaintenanceController
  *
  * Handles administrative maintenance tasks such as clearing various system caches
  * (route, view, config, etc.) via Artisan commands.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Admin
  */
-final class AdminMaintenanceController extends Controller
+final class MaintenanceController extends Controller
 {
     /**
      * Clear all application caches (config, route, view, and generic cache).

@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\AuditLogValidation;
 use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,7 @@ use Illuminate\Http\Request;
  * Provides access to system audit logs, allowing administrators to track
  * changes and activities within the application.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Admin
  */
 final class AuditLogController extends Controller
 {

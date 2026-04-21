@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Team;
 
 use App\Enums\HttpStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Validations\TeamValidation;
 use App\Services\TeamService;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,7 @@ use Illuminate\Http\Request;
  * Manages organizational teams and units, including team hierarchies,
  * member assignments, and unit-level data retrieval.
  *
- * @package App\Http\Controllers
+ * @package App\Http\Controllers\Team
  */
 final class TeamController extends Controller
 {
