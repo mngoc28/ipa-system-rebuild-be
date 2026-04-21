@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Delegation;
 use App\Http\Controllers\Controller;
 use App\Http\Validations\DelegationValidation;
 use App\Services\DelegationService;
+use App\Enums\HttpStatus;
 use Illuminate\Http\Request;
 
 /**
@@ -39,18 +40,15 @@ class DelegationController extends Controller
     {
         $delegations = $this->service->listDelegations($request);
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'items' => $delegations->items(),
-                'pagination' => [
-                    'current_page' => $delegations->currentPage(),
-                    'per_page' => $delegations->perPage(),
-                    'total' => $delegations->total(),
-                    'last_page' => $delegations->lastPage(),
-                ]
+        return $this->successResponse([
+            'items' => $delegations->items(),
+            'pagination' => [
+                'current_page' => $delegations->currentPage(),
+                'per_page' => $delegations->perPage(),
+                'total' => $delegations->total(),
+                'last_page' => $delegations->lastPage(),
             ]
-        ]);
+        ], 'Lấy danh sách đoàn công tác thành công.');
     }
 
     /**
@@ -64,18 +62,14 @@ class DelegationController extends Controller
         $delegation = $this->service->getDelegation((int)$id);
 
         if (!$delegation) {
-            return response()->json([
-                'success' => false,
-                'error' => [
-                    'message' => 'Đoàn công tác không tồn tại.'
-                ]
-            ], 404);
+            return $this->errorResponse(
+                'Đoàn công tác không tồn tại.',
+                'NOT_FOUND',
+                HttpStatus::NOT_FOUND
+            );
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $delegation
-        ]);
+        return $this->successResponse($delegation, 'Lấy thông tin đoàn công tác thành công.');
     }
 
     /**
@@ -89,13 +83,7 @@ class DelegationController extends Controller
         $validator = DelegationValidation::validateStore($request);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'error' => [
-                    'message' => 'Dữ liệu không hợp lệ.',
-                    'details' => $validator->errors()
-                ]
-            ], 422);
+            return $this->validateError($validator->errors());
         }
 
         try {
@@ -112,19 +100,17 @@ class DelegationController extends Controller
 
             $delegation = $this->service->createDelegation($data);
 
-            return response()->json([
-                'success' => true,
-                'data' => $delegation,
-                'message' => 'Tạo hồ sơ đoàn công tác thành công.'
-            ], 201);
+            return $this->createdResponse(
+                $delegation,
+                'Tạo hồ sơ đoàn công tác thành công.'
+            );
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => [
-                    'message' => 'Lỗi khi tạo hồ sơ đoàn công tác.',
-                    'system_error' => $e->getMessage()
-                ]
-            ], 500);
+            return $this->errorResponse(
+                'Lỗi khi tạo hồ sơ đoàn công tác.',
+                'CORE_ERROR',
+                HttpStatus::INTERNAL_SERVER_ERROR,
+                $e->getMessage()
+            );
         }
     }
 
@@ -140,35 +126,31 @@ class DelegationController extends Controller
         $validator = DelegationValidation::validateUpdate($request);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'error' => [
-                    'message' => 'Dữ liệu không hợp lệ.',
-                    'details' => $validator->errors()
-                ]
-            ], 422);
+            return $this->validateError($validator->errors());
         }
 
         try {
             $delegation = $this->service->updateDelegation((int)$id, $validator->validated());
 
             if (!$delegation) {
-                return response()->json([
-                    'success' => false,
-                    'error' => ['message' => 'Đoàn công tác không tồn tại.']
-                ], 404);
+                return $this->errorResponse(
+                    'Đoàn công tác không tồn tại.',
+                    'NOT_FOUND',
+                    HttpStatus::NOT_FOUND
+                );
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => $delegation,
-                'message' => 'Cập nhật hồ sơ đoàn thành công.'
-            ]);
+            return $this->successResponse(
+                $delegation,
+                'Cập nhật hồ sơ đoàn thành công.'
+            );
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => ['message' => 'Lỗi khi cập nhật hồ sơ đoàn.']
-            ], 500);
+            return $this->errorResponse(
+                'Lỗi khi cập nhật hồ sơ đoàn.',
+                'CORE_ERROR',
+                HttpStatus::INTERNAL_SERVER_ERROR,
+                $e->getMessage()
+            );
         }
     }
 
@@ -184,21 +166,24 @@ class DelegationController extends Controller
             $deleted = $this->service->deleteDelegation((int)$id);
 
             if (!$deleted) {
-                return response()->json([
-                    'success' => false,
-                    'error' => ['message' => 'Đoàn công tác không tồn tại.']
-                ], 404);
+                return $this->errorResponse(
+                    'Đoàn công tác không tồn tại.',
+                    'NOT_FOUND',
+                    HttpStatus::NOT_FOUND
+                );
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Xóa hồ sơ đoàn thành công.'
-            ]);
+            return $this->successResponse(
+                null,
+                'Xóa hồ sơ đoàn thành công.'
+            );
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => ['message' => 'Lỗi khi xóa hồ sơ đoàn.']
-            ], 500);
+            return $this->errorResponse(
+                'Lỗi khi xóa hồ sơ đoàn.',
+                'CORE_ERROR',
+                HttpStatus::INTERNAL_SERVER_ERROR,
+                $e->getMessage()
+            );
         }
     }
 
@@ -213,13 +198,14 @@ class DelegationController extends Controller
         $result = $this->service->listComments((int)$id);
 
         if (!$result['success']) {
-            return response()->json([
-                'success' => false,
-                'error' => ['message' => $result['message']]
-            ], 404);
+            return $this->errorResponse(
+                $result['message'],
+                'NOT_FOUND',
+                HttpStatus::NOT_FOUND
+            );
         }
 
-        return response()->json($result);
+        return $this->successResponse($result['data'] ?? $result, 'Lấy danh sách bình luận thành công.');
     }
 
     /**
@@ -240,13 +226,17 @@ class DelegationController extends Controller
         $result = $this->service->addComment((int)$id, $request->input('content'), $commenterId);
 
         if (!$result['success']) {
-            return response()->json([
-                'success' => false,
-                'error' => ['message' => $result['message']]
-            ], 400); // Bad Request or Not Found
+            return $this->errorResponse(
+                $result['message'],
+                'BAD_REQUEST',
+                HttpStatus::BAD_REQUEST
+            );
         }
 
-        return response()->json($result, 201);
+        return $this->createdResponse(
+            $result['data'] ?? $result,
+            'Thêm bình luận thành công.'
+        );
     }
 
     /**
@@ -267,13 +257,14 @@ class DelegationController extends Controller
         $result = $this->service->updateComment((int)$commentId, $request->input('content'), $userId);
 
         if (!$result['success']) {
-            return response()->json([
-                'success' => false,
-                'error' => ['message' => $result['message']]
-            ], 400);
+            return $this->errorResponse(
+                $result['message'],
+                'BAD_REQUEST',
+                HttpStatus::BAD_REQUEST
+            );
         }
 
-        return response()->json($result);
+        return $this->successResponse($result['data'] ?? $result, 'Cập nhật bình luận thành công.');
     }
 
     /**
@@ -290,13 +281,14 @@ class DelegationController extends Controller
         $result = $this->service->deleteComment((int)$commentId, $userId);
 
         if (!$result['success']) {
-            return response()->json([
-                'success' => false,
-                'error' => ['message' => $result['message']]
-            ], 400);
+            return $this->errorResponse(
+                $result['message'],
+                'BAD_REQUEST',
+                HttpStatus::BAD_REQUEST
+            );
         }
 
-        return response()->json($result);
+        return $this->successResponse(null, 'Xóa bình luận thành công.');
     }
 
     /**
