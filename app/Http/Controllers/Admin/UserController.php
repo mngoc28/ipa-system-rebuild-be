@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Validations\AdminUserValidation;
 use App\Http\Validations\ProfileValidation;
 use App\Services\AdminUserService;
+use App\Services\TeamService;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,6 +34,7 @@ final class UserController extends Controller
      */
     public function __construct(
         private AdminUserService $adminUserService,
+        private TeamService $teamService,
         private AdminUserValidation $adminUserValidation,
         private ProfileValidation $profileValidation,
     ) {
@@ -105,6 +107,7 @@ final class UserController extends Controller
             'phone',
             'unitId',
             'roleIds',
+            'password',
         ]));
 
         if (! $result) {
@@ -221,13 +224,13 @@ final class UserController extends Controller
 
         $file = $request->file('avatar');
 
-        // Upload to Cloudinary
+        /** @var array{secure_url: string} $uploadResult */
         $uploadResult = Cloudinary::upload($file->getRealPath(), [
             'folder' => 'avatars',
             'public_id' => $userId . '_' . Str::random(5)
         ]);
 
-        $path = $uploadResult->getSecurePath();
+        $path = $uploadResult['secure_url'];
 
         $result = $this->adminUserService->updateAvatar($userId, $path);
 
@@ -238,5 +241,45 @@ final class UserController extends Controller
         $result['avatar_url'] = $path;
 
         return $this->successResponse($result, __('profile.messages.avatar_update_success'));
+    }
+
+    /**
+     * List all available system roles for user assignment.
+     *
+     * @return JsonResponse
+     */
+    public function roles(): JsonResponse
+    {
+        $roles = $this->adminUserService->getRoles();
+        return $this->successResponse(['items' => $roles], __('admin_users.messages.fetch_success'));
+    }
+
+    /**
+     * List all organizational units.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function units(Request $request): JsonResponse
+    {
+        $result = $this->teamService->getUnits($request);
+        if (!$result['success']) {
+            return $this->errorResponse($result['message'], 'FETCH_FAILED', HttpStatus::BAD_REQUEST);
+        }
+        return $this->successResponse($result['data'], $result['message']);
+    }
+
+    /**
+     * Summary of resetPassword
+     * @param string $userId
+     * @return JsonResponse
+     */
+    public function resetPassword(string $userId): JsonResponse
+    {
+        $success = $this->adminUserService->resetPassword($userId);
+        if (!$success) {
+            return $this->errorResponse(__('admin_users.messages.reset_password_failed'), 'RESET_FAILED', HttpStatus::BAD_REQUEST);
+        }
+        return $this->successResponse(null, __('admin_users.messages.reset_password_success'));
     }
 }

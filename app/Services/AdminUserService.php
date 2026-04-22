@@ -177,4 +177,42 @@ final class AdminUserService
             return null;
         }
     }
+
+    /**
+     * Get a list of all available system roles.
+     *
+     * @return array
+     */
+    public function getRoles(): array
+    {
+        try {
+            return $this->adminUserRepository->getAvailableRoles();
+        } catch (Throwable $throwable) {
+            Log::error('AdminUserService::getRoles', [
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
+    /**
+     * Reset a user's password to the default value.
+     *
+     * @param string $userId
+     * @return bool
+     */
+    public function resetPassword(string $userId): bool
+    {
+        try {
+            return $this->adminUserRepository->resetPassword($userId);
+        } catch (Throwable $throwable) {
+            Log::error('AdminUserService::resetPassword', [
+                'userId' => $userId,
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
 }

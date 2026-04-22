@@ -1,10 +1,19 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-npm run prettier
-# composer phpstan
-# composer phpcbf
-# composer phpcs
-#php ./vendor/bin/phpunit
+set -e
 
+echo "🔍 Running pre-commit checks..."
 
+# 1. Lint and Format staged files
+npx lint-staged
+
+# 2. PHPStan (Static Analysis)
+echo "🧠 Running Static Analysis (PHPStan)..."
+composer run phpstan
+
+# 3. PHPUnit (Tests)
+echo "🧪 Running Tests (PHPUnit)..."
+php vendor/bin/phpunit
+
+echo "✅ All checks passed!"

@@ -18,7 +18,7 @@ final class IpaPasswordHistorySeeder extends Seeder
 
         DB::table('ipa_password_history')->insert([
                 'user_id' => DB::table('ipa_user')->value('id'),
-                'password_hash' => Hash::make('Password@123'),
+                'password_hash' => Hash::make('111111'),
                 'changed_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),

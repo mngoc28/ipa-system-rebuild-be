@@ -37,7 +37,7 @@ final class TaskRepository extends BaseRepository implements TaskRepositoryInter
         $priority = $request->input('priority');
 
         $query = Task::query()
-            ->with(['assignees:id,full_name,avatar_url', 'creator:id,full_name'])
+            ->with(['assignees:id,full_name,avatar_url', 'creator:id,full_name', 'delegation:id,name'])
             ->withCount(['comments', 'attachments']);
 
         // Enforce data scoping
@@ -82,14 +82,19 @@ final class TaskRepository extends BaseRepository implements TaskRepositoryInter
         $paginator = $query->orderBy('due_at', 'asc')->paginate($pageSize);
 
         $items = collect($paginator->items())->map(function (Task $task): array {
+            $dueAtStr = $task->due_at?->toIso8601String();
+            $formattedDeadline = $task->due_at?->format('d/m/Y');
+
             return [
                 'id' => (string) $task->id,
                 'title' => (string) $task->title,
                 'description' => (string) $task->description,
                 'status' => (int) $task->status,
                 'priority' => (int) $task->priority,
-                'dueAt' => $task->due_at ? $task->due_at->toIso8601String() : null,
+                'dueAt' => $dueAtStr,
+                'deadline' => $formattedDeadline, // Format for frontend dashboard
                 'isOverdue' => (bool) $task->is_overdue_cache,
+                'overdue' => (bool) $task->is_overdue_cache, // Match frontend property name
                 'createdBy' => (int) $task->created_by,
                 'creatorName' => $task->creator?->full_name ?? 'N/A',
                 'createdAt' => $task->created_at->toIso8601String(),
@@ -101,6 +106,7 @@ final class TaskRepository extends BaseRepository implements TaskRepositoryInter
                 'commentsCount' => (int) $task->comments_count,
                 'attachmentsCount' => (int) $task->attachments_count,
                 'delegationId' => $task->delegation_id,
+                'delegation' => $task->delegation?->name, // Delegation name for dashboard
                 'eventId' => $task->event_id,
             ];
         })->all();

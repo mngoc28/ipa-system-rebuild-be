@@ -108,8 +108,23 @@ final class TaskService
     public function create(array $data): array
     {
         try {
+            $shouldNotify = (bool) ($data['notify_assignees'] ?? true);
+            unset($data['notify_assignees']);
+
             /** @var Task $task */
             $task = $this->taskRepository->create($data);
+
+            // Notify Assignees if requested
+            if ($shouldNotify && !empty($data['assignee_ids'])) {
+                $this->notificationService->notify([
+                    'notification_type_id' => 1, // 'assignment'
+                    'title' => "[Nhiệm vụ] Bạn được phân công nhiệm vụ mới",
+                    'body' => $task->title,
+                    'ref_table' => 'ipa_task',
+                    'ref_id' => $task->id,
+                    'severity' => 0,
+                ], $data['assignee_ids']);
+            }
 
             return [
                 'success' => true,

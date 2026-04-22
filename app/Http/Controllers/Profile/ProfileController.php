@@ -61,13 +61,13 @@ final class ProfileController extends Controller
         $userId = (string) $user->id;
         $file = $request->file('avatar');
 
-        // Upload to Cloudinary
+        /** @var array{secure_url: string} $uploadResult */
         $uploadResult = Cloudinary::upload($file->getRealPath(), [
             'folder' => 'avatars',
             'public_id' => $userId . '_' . Str::random(5)
         ]);
 
-        $path = $uploadResult->getSecurePath();
+        $path = $uploadResult['secure_url'];
 
         $result = $this->adminUserService->updateAvatar($userId, $path);
 

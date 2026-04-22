@@ -61,7 +61,7 @@ final class IpaRbacFakeDataSeeder extends Seeder
                             'full_name' => "{$config['full_name_prefix']} {$i}",
                             'phone' => '09' . str_pad((string)rand(0, 99999999), 8, '0', STR_PAD_LEFT),
                             'status' => 1,
-                            'password' => Hash::make('password'),
+                            'password' => Hash::make('111111'),
                             'primary_unit_id' => $unitIds[$unitIndex % count($unitIds)],
                             'updated_at' => now(),
                         ]

@@ -50,7 +50,7 @@ final class PipelineValidation
             'estimated_value' => ['nullable', 'numeric'],
             'success_probability' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'expected_close_date' => ['nullable', 'date'],
-            'status' => ['nullable', 'integer'],
+            'status' => ['nullable', 'string', 'in:active,hidden'],
         ]);
     }
 
