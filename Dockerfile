@@ -14,10 +14,17 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     cron \
     nginx \
-    libonig-dev
+    libpq-dev \
+    libonig-dev \
+    nodejs \
+    npm
+
+
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip
+
 
 # Install Composer
 COPY --from=composer:2.8.1 /usr/bin/composer /usr/bin/composer
@@ -50,7 +57,9 @@ RUN mkdir -p /var/log/supervisord/ \
     && chown -R www-data:www-data /var/log/supervisord/ \
     && chmod -R 755 /var/log/supervisord/
 
-RUN bash ./setup.sh
+RUN sed -i 's/\r$//' ./setup.sh \
+    && bash ./setup.sh
+
 
 EXPOSE 80
 

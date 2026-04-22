@@ -1,28 +1,26 @@
 #!/bin/bash
 
-# Copy .env.dev to .env
-cp /var/www/.env.dev /var/www/.env
+# Copy .env.dev to .env only if it exists
+if [ -f "/var/www/.env.dev" ]; then
+    cp /var/www/.env.dev /var/www/.env
+fi
 
 # Install Composer dependencies
-composer install --ignore-platform-reqs
-composer update
-# Generate application key
-# php artisan key:generate
-
-# Migration
-# php artisan migrate
+composer install --no-dev --optimize-autoloader --ignore-platform-reqs
 
 # Optimize Laravel cache
 php artisan optimize
 
-# Install npm
-npm install
+# Install npm and generate API documentation
+if [ -d "api-doc" ]; then
+    npm install
+    cd api-doc
+    npm install apidoc -g
+    apidoc -i . -o ../public/apidoc
+    cd ..
+fi
 
-# Run API DOC
-cd api-doc
-npm install apidoc -g
-apidoc -i . -o ../public/apidoc
+# Ensure the correct permissions for Laravel
+chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# # Ensure the correct permissions
-chown -R www-data:www-data /var/www
-chmod -R 755 /var/www
