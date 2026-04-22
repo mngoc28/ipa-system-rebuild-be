@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('master_data_items', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+            $table->string('id', 50)->primary();
             $table->string('domain', 100)->index();
             $table->string('code', 100);
             $table->string('name_vi');

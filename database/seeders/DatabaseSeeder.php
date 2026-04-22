@@ -45,6 +45,7 @@ final class DatabaseSeeder extends Seeder
             IpaLoginAttemptSeeder::class,
             IpaTaskCommentSeeder::class,
             IpaLinkedChildSeeder::class,
+            IpaRbacFakeDataSeeder::class,
         ]);
     }
 
@@ -64,7 +65,7 @@ final class DatabaseSeeder extends Seeder
             ),
             'pgsql' => array_map(
                 static fn (object $row): string => (string) $row->tablename,
-                DB::select("SELECT tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema')"),
+                DB::select("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"),
             ),
             'sqlsrv' => array_map(
                 static fn (object $row): string => (string) $row->TABLE_NAME,
