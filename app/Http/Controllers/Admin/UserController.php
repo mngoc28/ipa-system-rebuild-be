@@ -224,13 +224,13 @@ final class UserController extends Controller
 
         $file = $request->file('avatar');
 
-        /** @var array{secure_url: string} $uploadResult */
+        /** @var \CloudinaryLabs\CloudinaryLaravel\CloudinaryEngine $uploadResult */
         $uploadResult = Cloudinary::upload($file->getRealPath(), [
             'folder' => 'avatars',
             'public_id' => $userId . '_' . Str::random(5)
         ]);
 
-        $path = $uploadResult['secure_url'];
+        $path = $uploadResult->getSecurePath();
 
         $result = $this->adminUserService->updateAvatar($userId, $path);
 

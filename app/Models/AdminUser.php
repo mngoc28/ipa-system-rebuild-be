@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 /**
  * Class AdminUser
@@ -70,7 +71,7 @@ final class AdminUser extends Authenticatable implements JWTSubject
      *
      * @var array
      */
-    protected $appends = ['role_codes', 'permission_codes', 'avatar'];
+    protected $appends = ['role_codes', 'permission_codes'];
 
     /**
      * Get the roles code list.
@@ -101,17 +102,23 @@ final class AdminUser extends Authenticatable implements JWTSubject
      *
      * @return string|null
      */
-    public function getAvatarAttribute()
+    public function getAvatarUrlAttribute()
     {
-        if (!$this->avatar_url) {
-            return null;
+        $value = $this->attributes['avatar_url'] ?? null;
+
+        if (!$value) {
+            return "https://ui-avatars.com/api/?name=" . urlencode($this->full_name ?? 'User') . "&background=DBEAFE&color=3B82F6&bold=true";
         }
 
-        if (str_starts_with($this->avatar_url, 'http')) {
-            return $this->avatar_url;
+        if (str_starts_with($value, 'http')) {
+            return $value;
         }
 
-        return rtrim((string) config('app.url'), '/') . '/storage/' . $this->avatar_url;
+        if (str_starts_with($value, 'avatars/')) {
+            return Cloudinary::getUrl($value);
+        }
+
+        return rtrim((string) config('app.url'), '/') . '/storage/' . $value;
     }
 
     /**

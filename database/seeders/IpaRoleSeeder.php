@@ -13,7 +13,7 @@ final class IpaRoleSeeder extends Seeder
     {
         $roles = [
             ['code' => 'ADMIN', 'name' => 'Quản trị hệ thống'],
-            ['code' => 'LEADER', 'name' => 'Lãnh đạo'],
+            ['code' => 'DIRECTOR', 'name' => 'Lãnh đạo'],
             ['code' => 'STAFF', 'name' => 'Chuyên viên'],
             ['code' => 'MANAGER', 'name' => 'Quản lý'],
         ];

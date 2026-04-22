@@ -14,7 +14,7 @@ parameters:
         - '#PHPDoc tag @var#'
         -
             identifier: missingType.iterableValue
-        - '#Call to an undefined static method CloudinaryLabs\\CloudinaryLaravel\\Facades\\Cloudinary::upload\(\)#'
+        - '#Call to an undefined static method CloudinaryLabs\\CloudinaryLaravel\\Facades\\Cloudinary::(upload|getUrl)\(\)#'
         - '#Call to an undefined static method Tymon\\JWTAuth\\Facades\\JWTAuth::(fromUser|getToken|invalidate)\(\)#'
 
     excludePaths:
