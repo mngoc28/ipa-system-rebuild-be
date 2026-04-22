@@ -7,6 +7,8 @@ namespace App\Repositories\MasterDataRepository;
 use App\Models\MasterData;
 use App\Models\Sector;
 use App\Models\Location;
+use App\Models\Country;
+use App\Models\PipelineStage;
 use App\Repositories\BaseRepository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -24,9 +26,11 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
      */
     private function getTargetBuilder(string $domain): Builder
     {
-        return match ($domain) {
+        return match (Str::singular($domain)) {
             'sector' => (new Sector())->newQuery(),
             'location' => (new Location())->newQuery(),
+            'country' => (new Country())->newQuery(),
+            'pipeline-stage' => (new PipelineStage())->newQuery(),
             default => (new MasterData())->newQuery(),
         };
     }
@@ -62,17 +66,22 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
     public function getAllOrSearch(string $domain, Request $request): array
     {
         $query = $this->getTargetBuilder($domain);
+        $singularDomain = Str::singular($domain);
+        $isDedicatedTable = in_array($singularDomain, ['sector', 'location', 'country', 'pipeline-stage']);
 
-        if ($domain !== 'sector' && $domain !== 'location') {
+        if (!$isDedicatedTable) {
             $query->where('domain', $domain);
         }
 
         if ($request->filled('q')) {
             $keyword = trim((string) $request->input('q'));
 
-            $query->where(function ($builder) use ($keyword, $domain): void {
-                if ($domain === 'location') {
+            $query->where(function ($builder) use ($keyword, $singularDomain): void {
+                if ($singularDomain === 'location' || $singularDomain === 'country' || $singularDomain === 'pipeline-stage') {
                     $builder->where('name', 'like', '%' . $keyword . '%');
+                } elseif ($singularDomain === 'sector') {
+                    $builder->where('name_vi', 'like', '%' . $keyword . '%')
+                        ->orWhere('name_en', 'like', '%' . $keyword . '%');
                 } else {
                     $builder->where('code', 'like', '%' . $keyword . '%')
                         ->orWhere('name_vi', 'like', '%' . $keyword . '%')
@@ -81,9 +90,10 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
             });
         }
 
-        $defaultSort = match ($domain) {
+        $defaultSort = match ($singularDomain) {
             'location' => 'name',
-            'sector' => 'id',
+            'sector', 'country' => 'name_vi',
+            'pipeline-stage' => 'stage_order',
             default => 'sort_order'
         };
         $sortField = (string) $request->input('sort_field', $defaultSort);
@@ -93,6 +103,20 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
             ->get()
             ->map(fn ($item): array => $this->normalize($item, $domain))
             ->all();
+
+        // FALLBACK: If DB returns nothing, check if there's static data in config/master_data.php
+        if (empty($items)) {
+            $configItems = config('master_data.domains.' . $domain);
+            if (!empty($configItems) && is_array($configItems)) {
+                return ['items' => $configItems];
+            }
+
+            // Also try plural/singular fallback for config check
+            $configItemsFallback = config('master_data.domains.' . (str_contains($domain, 's') ? Str::singular($domain) : Str::plural($domain)));
+            if (!empty($configItemsFallback) && is_array($configItemsFallback)) {
+                return ['items' => $configItemsFallback];
+            }
+        }
 
         return [
             'items' => $items,
@@ -204,14 +228,16 @@ final class MasterDataRepository extends BaseRepository implements MasterDataRep
      */
     private function normalize($item, string $domain = ''): array
     {
-        if ($domain === 'location') {
+        $domain = Str::singular($domain);
+
+        if (in_array($domain, ['location', 'country', 'pipeline-stage', 'sector'])) {
             return [
                 'id' => $item->id,
-                'code' => $item->id, // Location might not have code, use id as fallback
-                'name_vi' => $item->name,
-                'name_en' => $item->name,
-                'sort_order' => 0,
-                'is_active' => true,
+                'code' => $item->code ?? ($item->iso_code ?? (string) $item->id),
+                'name_vi' => $item->name_vi ?? ($item->name ?? ''),
+                'name_en' => $item->name_en ?? ($item->name ?? ''),
+                'sort_order' => $item->sort_order ?? ($item->stage_order ?? 0),
+                'is_active' => (bool) ($item->is_active ?? true),
                 'created_at' => optional($item->created_at)?->toIso8601String(),
                 'updated_at' => optional($item->updated_at)?->toIso8601String(),
             ];

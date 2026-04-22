@@ -178,6 +178,7 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
                     'id' => (string) $row->id,
                     'delegationId' => $row->delegation_id !== null ? (string) $row->delegation_id : null,
                     'title' => (string) $row->title,
+                    'description' => $row->description !== null ? (string) $row->description : null,
                     'eventType' => self::EVENT_TYPE_MAP[(int) $row->event_type] ?? 'MEETING',
                     'status' => self::STATUS_MAP[(int) $row->status] ?? 'PLANNED',
                     'startAt' => $this->formatDate($row->start_at),
@@ -189,7 +190,15 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
                     }, array_keys($participants)),
                     'joinStates' => array_reduce(array_keys($participants), function (array $carry, int $userId) use ($participants): array {
                         $key = $userId === 4 ? 'lsk5p31wg' : (string) $userId;
-                        $carry[$key] = $participants[$userId] === 1 ? 'JOINED' : 'DECLINED';
+                        $status = $participants[$userId];
+
+                        if ($status === 1) {
+                            $carry[$key] = 'JOINED';
+                        } elseif ($status === 2) {
+                            $carry[$key] = 'DECLINED';
+                        } else {
+                            $carry[$key] = 'PENDING';
+                        }
 
                         return $carry;
                     }, []),
@@ -315,7 +324,7 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
                     $rows[] = [
                         'event_id' => $eventId,
                         'user_id' => (int) $participantId,
-                        'participation_status' => 1,
+                        'participation_status' => 0, // Default to PENDING
                         'invited_at' => $now,
                         'created_at' => $now,
                         'updated_at' => $now,
@@ -383,9 +392,46 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
                 $payload['location_id'] = $this->nullableInteger(Arr::get($attributes, 'locationId', Arr::get($attributes, 'location_id')));
             }
 
+            if (Arr::has($attributes, 'organizerUserId') || Arr::has($attributes, 'organizer_user_id')) {
+                $payload['organizer_user_id'] = $this->requiredInteger(
+                    Arr::get($attributes, 'organizerUserId', Arr::get($attributes, 'organizer_user_id'))
+                );
+            }
+
             $payload['updated_at'] = now();
 
             DB::table('ipa_event')->where('id', $id)->update($payload);
+
+            // Sync participants if participantUserIds is provided
+            if (Arr::has($attributes, 'participantUserIds') || Arr::has($attributes, 'participant_user_ids')) {
+                $participantIds = Arr::get($attributes, 'participantUserIds', Arr::get($attributes, 'participant_user_ids', []));
+
+                DB::table('ipa_event_participant')->where('event_id', $id)->delete();
+
+                if (is_array($participantIds) && $participantIds !== []) {
+                    $now = now();
+                    $rows = [];
+
+                    foreach ($participantIds as $participantId) {
+                        if (! is_numeric($participantId) && (string) $participantId !== 'lsk5p31wg') {
+                            continue;
+                        }
+
+                        $rows[] = [
+                            'event_id' => (int) $id,
+                            'user_id' => $this->requiredInteger($participantId),
+                            'participation_status' => 0, // Default to PENDING
+                            'invited_at' => $now,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+                    }
+
+                    if ($rows !== []) {
+                        DB::table('ipa_event_participant')->insert($rows);
+                    }
+                }
+            }
 
             $updated = $this->findById($id);
 

@@ -44,6 +44,7 @@ final class AdminUserValidation
             'unitId' => ['nullable', 'string', 'max:255'],
             'roleIds' => ['nullable', 'array'],
             'roleIds.*' => ['string', 'max:255'],
+            'password' => ['nullable', 'string', 'min:6'],
         ]);
     }
 
@@ -61,6 +62,11 @@ final class AdminUserValidation
         ]);
     }
 
+    /**
+     * Summary of lockValidation
+     * @param Request $request
+     * @return ValidationValidator
+     */
     public function lockValidation(Request $request): ValidationValidator
     {
         return Validator::make($request->all(), [

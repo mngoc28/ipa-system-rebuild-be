@@ -59,6 +59,22 @@ interface AdminUserRepositoryInterface extends RepositoryInterface
     public function lockUser(string $userId, bool $locked): ?array;
 
     /**
+     * Delete an administrative user.
+     *
+     * @param string $userId
+     * @return bool
+     */
+    public function deleteUser(string $userId): bool;
+
+    /**
+     * Reset a user's password to the system default.
+     *
+     * @param string $userId
+     * @return bool
+     */
+    public function resetPassword(string $userId): bool;
+
+    /**
      * Get user IDs filtered by role code and unit ID.
      *
      * @param string $roleCode
@@ -75,4 +91,11 @@ interface AdminUserRepositoryInterface extends RepositoryInterface
      * @return array|null
      */
     public function updateAvatar(string $userId, string $path): ?array;
+
+    /**
+     * Retrieve all available system roles.
+     *
+     * @return array
+     */
+    public function getAvailableRoles(): array;
 }

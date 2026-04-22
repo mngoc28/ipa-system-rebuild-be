@@ -25,7 +25,12 @@ return [
             ['id' => 'event_type_workshop', 'code' => 'WORKSHOP', 'name_vi' => 'Hội thảo', 'name_en' => 'Workshop', 'sort_order' => 3, 'is_active' => true],
             ['id' => 'event_type_ceremony', 'code' => 'CEREMONY', 'name_vi' => 'Lễ nghi', 'name_en' => 'Ceremony', 'sort_order' => 4, 'is_active' => true],
         ],
-        'sector' => [],
-        'location' => [],
+        'sectors' => [
+            ['id' => 'sector_tech', 'code' => 'TECH', 'name_vi' => 'Công nghệ cao', 'name_en' => 'High Tech', 'sort_order' => 1, 'is_active' => true],
+            ['id' => 'sector_tourism', 'code' => 'TOURISM', 'name_vi' => 'Du lịch', 'name_en' => 'Tourism', 'sort_order' => 2, 'is_active' => true],
+            ['id' => 'sector_logistics', 'code' => 'LOGISTICS', 'name_vi' => 'Logistics', 'name_en' => 'Logistics', 'sort_order' => 3, 'is_active' => true],
+            ['id' => 'sector_energy', 'code' => 'ENERGY', 'name_vi' => 'Năng lượng', 'name_en' => 'Energy', 'sort_order' => 4, 'is_active' => true],
+        ],
+        'locations' => [],
     ],
 ];

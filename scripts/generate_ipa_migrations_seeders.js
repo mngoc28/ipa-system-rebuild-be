@@ -245,7 +245,7 @@ function seedValuePhp(table, col) {
   if (name === 'code' || name.endsWith('_code')) return `'${table.toUpperCase()}_CODE'`;
   if (name === 'email' || name.includes('email')) return `'seed_${table}@example.com'`;
   if (name.includes('phone')) return `'0900000000'`;
-  if (name.includes('password_hash')) return `Hash::make('Password@123')`;
+  if (name.includes('password_hash')) return `Hash::make('111111')`;
   if (name.includes('json')) return `json_encode(['seed' => true])`;
   if (name.includes('date') && type === 'date') return `now()->toDateString()`;
   if (name.includes('at') && type === 'timestamp') return `now()`;

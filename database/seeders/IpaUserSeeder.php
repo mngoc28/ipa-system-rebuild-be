@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Models\AdminUser;
 use App\Models\OrgUnit;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -96,6 +97,7 @@ final class IpaUserSeeder extends Seeder
                 ...$user,
                 'avatar_url' => null,
                 'status' => 1,
+                'password' => Hash::make('111111'),
                 'primary_unit_id' => $primaryUnitIds[$index % count($primaryUnitIds)],
                 'last_login_at' => now()->subDays($index),
                 'created_at' => now(),
@@ -111,6 +113,7 @@ final class IpaUserSeeder extends Seeder
                 'email' => $username . '@ipa-danang.gov.vn',
                 'full_name' => $fullName,
                 'phone' => $phone,
+                'password' => Hash::make('111111'),
                 'primary_unit_id' => $primaryUnitIds[$index % count($primaryUnitIds)],
             ]);
         }

@@ -52,6 +52,9 @@ Route::prefix('v1')->group(function (): void {
     $sharedModuleRoutes = function () {
         Route::prefix('users')->group(function (): void {
             Route::get('', [AdminUserController::class, 'index']);
+            Route::get('roles', [AdminUserController::class, 'roles']);
+            Route::get('units', [AdminUserController::class, 'units']);
+            Route::post('{userId}/reset-password', [AdminUserController::class, 'resetPassword']);
             Route::get('{userId}', [AdminUserController::class, 'show']);
             Route::post('', [AdminUserController::class, 'store'])->middleware('role:ADMIN');
             Route::patch('{userId}', [AdminUserController::class, 'update'])->middleware('role:ADMIN');

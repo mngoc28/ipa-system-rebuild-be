@@ -50,8 +50,9 @@ final class EventValidation
             'eventType' => ['nullable', 'string', Rule::in(['MEETING', 'VISIT', 'WORKSHOP', 'CEREMONY'])],
             'status' => ['nullable', 'string', Rule::in(['PLANNED', 'CONFIRMED', 'DONE', 'CANCELLED'])],
             'startAt' => 'nullable|date',
-            'endAt' => 'nullable|date',
+            'endAt' => 'nullable|date|after:startAt',
             'locationId' => 'nullable|string|max:255',
+            'organizerUserId' => 'nullable|string|max:255',
             'participantUserIds' => 'nullable|array',
             'participantUserIds.*' => 'string|max:255',
         ]);

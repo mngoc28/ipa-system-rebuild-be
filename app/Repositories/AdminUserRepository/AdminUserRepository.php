@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -191,6 +192,7 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
                 'email' => Arr::get($attributes, 'email'),
                 'full_name' => Arr::get($attributes, 'fullName'),
                 'phone' => Arr::get($attributes, 'phone'),
+                'password' => Hash::make((string) Arr::get($attributes, 'password', '111111')),
                 'avatar_url' => null,
                 'status' => 1,
                 'primary_unit_id' => $this->resolveUnitId((string) Arr::get($attributes, 'unitId')),
@@ -599,6 +601,55 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
             ]);
 
             return $this->findByUserId($userId);
+        });
+    }
+
+    /**
+     * Retrieve all available system roles.
+     *
+     * @return array
+     */
+    public function getAvailableRoles(): array
+    {
+        return DB::table('ipa_role')
+            ->select(['id', 'code', 'name'])
+            ->orderBy('id', 'asc')
+            ->get()
+            ->all();
+    }
+
+    /**
+     * Summary of resetPassword
+     * @param string $userId
+     * @return bool
+     */
+    public function resetPassword(string $userId): bool
+    {
+        return DB::table('ipa_user')
+            ->where('id', $userId)
+            ->update([
+                'password' => Hash::make('111111'),
+                'updated_at' => now(),
+            ]) > 0;
+    }
+
+    /**
+     * Delete an administrative user.
+     *
+     * @param string $userId
+     * @return bool
+     */
+    public function deleteUser(string $userId): bool
+    {
+        return DB::transaction(function () use ($userId) {
+            // Remove role associations first
+            DB::table('ipa_user_role')->where('user_id', $userId)->delete();
+
+            // Remove unit associations if any
+            DB::table('ipa_user_unit')->where('user_id', $userId)->delete();
+
+            // Delete the user
+            return DB::table('ipa_user')->where('id', $userId)->delete() > 0;
         });
     }
 }
