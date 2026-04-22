@@ -61,13 +61,13 @@ final class ProfileController extends Controller
         $userId = (string) $user->id;
         $file = $request->file('avatar');
 
-        /** @var array{secure_url: string} $uploadResult */
+        /** @var \CloudinaryLabs\CloudinaryLaravel\CloudinaryEngine $uploadResult */
         $uploadResult = Cloudinary::upload($file->getRealPath(), [
             'folder' => 'avatars',
             'public_id' => $userId . '_' . Str::random(5)
         ]);
 
-        $path = $uploadResult['secure_url'];
+        $path = $uploadResult->getPublicId();
 
         $result = $this->adminUserService->updateAvatar($userId, $path);
 
@@ -75,7 +75,7 @@ final class ProfileController extends Controller
              return $this->errorResponse(__('profile.messages.avatar_update_error'), 'UPDATE_FAILED', HttpStatus::BAD_REQUEST);
         }
 
-        $result['avatar_url'] = $path;
+        $result['avatar_url'] = $uploadResult->getSecurePath();
 
         return $this->successResponse($result, __('profile.messages.avatar_update_success'));
     }

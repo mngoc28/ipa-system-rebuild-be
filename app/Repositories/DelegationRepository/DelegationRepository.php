@@ -45,8 +45,10 @@ class DelegationRepository implements DelegationRepositoryInterface
                 $query->where('owner_user_id', $user->id);
             } elseif ($isManager) {
                 $query->where(function ($q) use ($user) {
-                    $q->where('host_unit_id', $user->primary_unit_id)
-                      ->orWhere('owner_user_id', $user->id);
+                    $q->where('owner_user_id', $user->id)
+                      ->orWhereHas('owner', function ($ownerQuery) use ($user) {
+                          $ownerQuery->where('primary_unit_id', $user->primary_unit_id);
+                      });
                 });
             }
         }
@@ -110,8 +112,10 @@ class DelegationRepository implements DelegationRepositoryInterface
                 $query->where('owner_user_id', $user->id);
             } elseif ($isManager) {
                 $query->where(function ($q) use ($user) {
-                    $q->where('host_unit_id', $user->primary_unit_id)
-                      ->orWhere('owner_user_id', $user->id);
+                    $q->where('owner_user_id', $user->id)
+                      ->orWhereHas('owner', function ($ownerQuery) use ($user) {
+                          $ownerQuery->where('primary_unit_id', $user->primary_unit_id);
+                      });
                 });
             }
         }

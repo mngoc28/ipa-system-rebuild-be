@@ -40,7 +40,7 @@ final class IpaRbacFakeDataSeeder extends Seeder
         ];
 
         DB::transaction(function () use ($usersToCreate, $roles, $unitIds, $roleCodes) {
-            $unitIndex = 0;
+            $managerUnits = [];
 
             foreach ($usersToCreate as $config) {
                 $roleId = $roles[$roleCodes[$config['type']]] ?? null;
@@ -54,6 +54,24 @@ final class IpaRbacFakeDataSeeder extends Seeder
                     $email = "{$config['prefix']}{$i}@gmail.com";
                     $username = "{$config['prefix']}{$i}";
                     
+                    // Determine Unit ID based on hierarchy requirements
+                    $unitId = $unitIds[0]; // Default to ROOT
+                    
+                    if ($config['type'] === 'MANAGER') {
+                        // Manager 1 -> Unit 1, Manager 2 -> Unit 2
+                        $unitId = $unitIds[$i] ?? $unitIds[0];
+                        $managerUnits[$i] = $unitId;
+                    } elseif ($config['type'] === 'STAFF') {
+                        if ($i <= 10) {
+                            $unitId = $unitIds[1] ?? $unitIds[0]; // Together with Manager 1
+                        } elseif ($i <= 20) {
+                            $unitId = $unitIds[2] ?? $unitIds[0]; // Together with Manager 2
+                        } else {
+                            // Others: round robin starting from unit 3
+                            $unitId = $unitIds[($i % (count($unitIds) - 3)) + 3] ?? $unitIds[0];
+                        }
+                    }
+
                     $user = AdminUser::updateOrCreate(
                         ['email' => $email],
                         [
@@ -62,7 +80,7 @@ final class IpaRbacFakeDataSeeder extends Seeder
                             'phone' => '09' . str_pad((string)rand(0, 99999999), 8, '0', STR_PAD_LEFT),
                             'status' => 1,
                             'password' => Hash::make('111111'),
-                            'primary_unit_id' => $unitIds[$unitIndex % count($unitIds)],
+                            'primary_unit_id' => $unitId,
                             'updated_at' => now(),
                         ]
                     );
@@ -78,7 +96,10 @@ final class IpaRbacFakeDataSeeder extends Seeder
                         ]
                     );
 
-                    $unitIndex++;
+                    // If user is a manager, set them as the manager of their unit
+                    if ($config['type'] === 'MANAGER') {
+                        OrgUnit::where('id', $unitId)->update(['manager_user_id' => $user->id]);
+                    }
                 }
             }
         });

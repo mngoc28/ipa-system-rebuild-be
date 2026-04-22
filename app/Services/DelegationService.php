@@ -143,7 +143,10 @@ class DelegationService
     protected function notifyManagersOfSubmission(Delegation $delegation): void
     {
         try {
-            $managerIds = $this->userRepository->getIdsByRoleAndUnit('MANAGER', (int)$delegation->host_unit_id);
+            // Managers manage staff within their unit, so we notify managers of the owner's unit.
+            $unitId = $delegation->owner ? (int)$delegation->owner->primary_unit_id : (int)$delegation->host_unit_id;
+
+            $managerIds = $this->userRepository->getIdsByRoleAndUnit('MANAGER', $unitId);
             if (!empty($managerIds)) {
                 $this->notificationService->notify([
                     'notification_type_id' => 2, // approval
