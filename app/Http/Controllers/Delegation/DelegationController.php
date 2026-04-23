@@ -38,17 +38,9 @@ class DelegationController extends Controller
      */
     public function index(Request $request)
     {
-        $delegations = $this->service->listDelegations($request);
+        $result = $this->service->listDelegations($request);
 
-        return $this->successResponse([
-            'items' => $delegations->items(),
-            'pagination' => [
-                'current_page' => $delegations->currentPage(),
-                'per_page' => $delegations->perPage(),
-                'total' => $delegations->total(),
-                'last_page' => $delegations->lastPage(),
-            ]
-        ], 'Lấy danh sách đoàn công tác thành công.');
+        return $this->successResponse($result, 'Lấy danh sách đoàn công tác thành công.');
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Models\Event;
 use App\Models\Delegation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DelegationRepository implements DelegationRepositoryInterface
 {
@@ -26,70 +27,212 @@ class DelegationRepository implements DelegationRepositoryInterface
 
     /**
      * Get a paginated list of delegations with scoping, search, and filtering.
-     * Scoping is applied based on the user's role (Staff can only see their own, Managers see their unit).
+     * Uses raw DB query to avoid N+1 queries from Eloquent model appends.
+     * Returns a flat, normalized array for list views.
      *
      * @param Request $request
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     * @return array
      */
-    public function getPaginated(Request $request)
+    public function getPaginated(Request $request): array
     {
-        $query = $this->model->newQuery();
-
-        // Enforce data scoping
         $user = auth()->user();
+        $perPage = max(1, min(100, (int) $request->get('per_page', 10)));
+        $page    = max(1, (int) $request->get('page', 1));
+
+        $query = DB::table('ipa_delegation as d')
+            ->leftJoin('ipa_country as c', 'c.id', '=', 'd.country_id')
+            ->leftJoin('ipa_user as owner', 'owner.id', '=', 'd.owner_user_id')
+            ->leftJoin('ipa_org_unit as hu', 'hu.id', '=', 'd.host_unit_id')
+            ->whereNull('d.deleted_at')
+            ->select([
+                'd.id',
+                'd.code',
+                'd.name',
+                'd.direction',
+                'd.status',
+                'd.priority',
+                'd.country_id',
+                'd.host_unit_id',
+                'd.owner_user_id',
+                'd.start_date',
+                'd.end_date',
+                'd.participant_count',
+                'd.objective',
+                'd.description',
+                'd.approval_remark',
+                'd.created_at',
+                'd.updated_at',
+                // country flat fields
+                'c.name_vi as country_name_vi',
+                'c.name_en as country_name_en',
+                'c.code as country_code',
+                // owner flat fields
+                'owner.full_name as owner_full_name',
+                'owner.avatar_url as owner_avatar_url',
+                // host unit flat fields
+                'hu.unit_name as host_unit_name',
+                'hu.unit_code as host_unit_code',
+            ]);
+
+        // --- Data scoping by role ---
         if ($user) {
-            $isStaff = $user->hasRole('STAFF') && !$user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']);
+            $user->loadMissing('roles');
+            $isStaff   = $user->hasRole('STAFF') && !$user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']);
             $isManager = $user->hasRole('MANAGER') && !$user->hasRole(['ADMIN', 'DIRECTOR']);
 
             if ($isStaff) {
-                $query->where('owner_user_id', $user->id);
+                $query->where('d.owner_user_id', $user->id);
             } elseif ($isManager) {
                 $query->where(function ($q) use ($user) {
-                    $q->where('owner_user_id', $user->id)
-                      ->orWhereHas('owner', function ($ownerQuery) use ($user) {
-                          $ownerQuery->where('primary_unit_id', $user->primary_unit_id);
-                      });
+                    $q->where('d.owner_user_id', $user->id)
+                      ->orWhere('owner.primary_unit_id', $user->primary_unit_id);
                 });
             }
         }
 
-        // Search
-        if ($request->has('search')) {
+        // --- Filters ---
+        if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
+                $q->where('d.name', 'like', "%{$search}%")
+                  ->orWhere('d.code', 'like', "%{$search}%");
             });
         }
 
-        // Filters
-        if ($request->has('direction')) {
-            $query->where('direction', $request->get('direction'));
+        if ($request->filled('direction')) {
+            $query->where('d.direction', $request->get('direction'));
         }
 
-        if ($request->has('status')) {
-            $query->where('status', $request->get('status'));
+        if ($request->filled('status')) {
+            $query->where('d.status', $request->get('status'));
         }
 
-        if ($request->has('priority')) {
-            $query->where('priority', $request->get('priority'));
+        if ($request->filled('priority')) {
+            $query->where('d.priority', $request->get('priority'));
         }
 
-        if ($request->has('country_id')) {
-            $query->where('country_id', $request->get('country_id'));
+        if ($request->filled('country_id')) {
+            $query->where('d.country_id', $request->get('country_id'));
         }
 
-        if ($request->has('owner_user_id') && (!$user || !$user->hasRole('STAFF') || $user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']))) {
-            $query->where('owner_user_id', $request->get('owner_user_id'));
+        if ($request->filled('owner_user_id') && (!$user || !$user->hasRole('STAFF') || $user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']))) {
+            $query->where('d.owner_user_id', $request->get('owner_user_id'));
         }
 
-        // Relations
-        $query->with(['country', 'partners', 'hostUnit', 'owner', 'sectors', 'tasks', 'checklist']);
+        // --- Count & paginate ---
+        $total = (clone $query)->count();
 
-        // Sorting
-        $query->orderBy('created_at', 'desc');
+        $rows = $query
+            ->orderBy('d.created_at', 'desc')
+            ->offset(($page - 1) * $perPage)
+            ->limit($perPage)
+            ->get();
 
-        return $query->paginate($request->get('per_page', 10));
+        // --- Batch-load partner IDs & sector IDs for all delegation IDs in one query ---
+        $delegationIds = $rows->pluck('id')->all();
+
+        $partnerMap = [];
+        if ($delegationIds) {
+            $partnerRows = DB::table('ipa_delegation_partner_link as dpl')
+                ->join('ipa_partner as p', 'p.id', '=', 'dpl.partner_id')
+                ->whereIn('dpl.delegation_id', $delegationIds)
+                ->select('dpl.delegation_id', 'p.id as partner_id', 'p.partner_name')
+                ->get();
+            foreach ($partnerRows as $pr) {
+                $partnerMap[$pr->delegation_id][] = [
+                    'id'           => (int) $pr->partner_id,
+                    'partner_name' => $pr->partner_name,
+                ];
+            }
+        }
+
+        $sectorMap = [];
+        if ($delegationIds) {
+            $sectorRows = DB::table('ipa_delegation_sector_link as dsl')
+                ->join('ipa_md_sector as s', 's.id', '=', 'dsl.sector_id')
+                ->whereIn('dsl.delegation_id', $delegationIds)
+                ->select('dsl.delegation_id', 's.id as sector_id', 's.name_vi', 's.code')
+                ->get();
+            foreach ($sectorRows as $sr) {
+                $sectorMap[$sr->delegation_id][] = [
+                    'id'      => (int) $sr->sector_id,
+                    'name'    => $sr->name_vi,
+                    'code'    => $sr->code,
+                ];
+            }
+        }
+
+        $items = $rows->map(fn ($row) => $this->normalizeDelegation($row, $partnerMap, $sectorMap))->all();
+
+        return [
+            'items' => $items,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page'     => $perPage,
+                'total'        => $total,
+                'last_page'    => (int) ceil($total / $perPage),
+            ],
+        ];
+    }
+
+    /**
+     * Normalize a raw delegation DB row into a flat response array for list views.
+     *
+     * @param object $row
+     * @param array $partnerMap
+     * @param array $sectorMap
+     * @return array
+     */
+    private function normalizeDelegation(object $row, array $partnerMap = [], array $sectorMap = []): array
+    {
+        $id = (int) $row->id;
+        return [
+            'id'                => $id,
+            'code'              => $row->code,
+            'name'              => $row->name,
+            'direction'         => (int) $row->direction,
+            'status'            => (int) $row->status,
+            'priority'          => (int) $row->priority,
+            'country_id'        => $row->country_id ? (int) $row->country_id : null,
+            'host_unit_id'      => $row->host_unit_id ? (int) $row->host_unit_id : null,
+            'owner_user_id'     => $row->owner_user_id ? (int) $row->owner_user_id : null,
+            'start_date'        => $row->start_date,
+            'end_date'          => $row->end_date,
+            'participant_count' => (int) $row->participant_count,
+            'objective'         => $row->objective,
+            'description'       => $row->description,
+            'approval_remark'   => $row->approval_remark,
+            'created_at'        => $row->created_at,
+            'updated_at'        => $row->updated_at,
+            // Flat nested: country
+            'country' => $row->country_id ? [
+                'id'      => (int) $row->country_id,
+                'name_vi' => $row->country_name_vi,
+                'name_en' => $row->country_name_en,
+                'code'    => $row->country_code,
+            ] : null,
+            // Flat nested: owner
+            'owner' => $row->owner_user_id ? [
+                'id'         => (int) $row->owner_user_id,
+                'full_name'  => $row->owner_full_name,
+                'avatar_url' => $row->owner_avatar_url
+                    ? (str_starts_with((string) $row->owner_avatar_url, 'http')
+                        ? $row->owner_avatar_url
+                        : rtrim((string) config('app.url'), '/') . '/storage/' . $row->owner_avatar_url)
+                    : 'https://ui-avatars.com/api/?name='
+                        . urlencode((string) ($row->owner_full_name ?? 'User'))
+                        . '&background=DBEAFE&color=3B82F6&bold=true',
+            ] : null,
+            // Flat nested: host_unit
+            'host_unit' => $row->host_unit_id ? [
+                'id'        => (int) $row->host_unit_id,
+                'unit_name' => $row->host_unit_name,
+                'unit_code' => $row->host_unit_code,
+            ] : null,
+            // Batch-loaded relations
+            'partners' => $partnerMap[$id] ?? [],
+            'sectors'  => $sectorMap[$id] ?? [],
+        ];
     }
 
     /**

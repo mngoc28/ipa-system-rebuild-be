@@ -71,7 +71,9 @@ final class AdminUser extends Authenticatable implements JWTSubject
      *
      * @var array
      */
-    protected $appends = ['role_codes', 'permission_codes'];
+    // Note: role_codes and permission_codes are NOT auto-appended to avoid N+1 queries in list views.
+    // Use ->load(['roles', 'roles.permissions']) explicitly when these are needed (e.g., /me endpoint).
+    protected $appends = [];
 
     /**
      * Get the roles code list.
@@ -80,7 +82,11 @@ final class AdminUser extends Authenticatable implements JWTSubject
      */
     public function getRoleCodesAttribute(): array
     {
-        return $this->roles()->get()->pluck('code')->toArray();
+        // Use already-loaded relation to avoid N+1 query
+        if ($this->relationLoaded('roles')) {
+            return $this->roles->pluck('code')->toArray();
+        }
+        return $this->roles()->pluck('code')->toArray();
     }
 
     /**
@@ -91,8 +97,13 @@ final class AdminUser extends Authenticatable implements JWTSubject
     public function getPermissionCodesAttribute(): array
     {
         $permissions = collect();
-        foreach ($this->roles()->get() as $role) {
-            $permissions = $permissions->merge($role->permissions()->pluck('code'));
+        // Use already-loaded relation to avoid N+1 query
+        $roles = $this->relationLoaded('roles') ? $this->roles : $this->roles()->get();
+        foreach ($roles as $role) {
+            $roleCodes = $role->relationLoaded('permissions')
+                ? $role->permissions->pluck('code')
+                : $role->permissions()->pluck('code');
+            $permissions = $permissions->merge($roleCodes);
         }
         return $permissions->unique()->values()->toArray();
     }
@@ -132,9 +143,15 @@ final class AdminUser extends Authenticatable implements JWTSubject
         $roles = is_array($roles) ? $roles : [$roles];
         $roles = array_map('strtoupper', $roles);
 
+        // Use already-loaded relation to avoid N+1 query
+        if ($this->relationLoaded('roles')) {
+            return $this->roles
+                ->contains(fn ($role) => in_array(strtoupper((string) $role->code), $roles));
+        }
+
         return $this->roles()
             ->whereIn(\DB::raw('UPPER(code)'), $roles)
-            ->count() > 0;
+            ->exists();
     }
 
     /**
@@ -145,8 +162,21 @@ final class AdminUser extends Authenticatable implements JWTSubject
      */
     public function hasPermission(string $permissionCode): bool
     {
+        // Use already-loaded relation to avoid N+1 query
+        if ($this->relationLoaded('roles')) {
+            foreach ($this->roles as $role) {
+                $perms = $role->relationLoaded('permissions')
+                    ? $role->permissions
+                    : $role->permissions()->get();
+                if ($perms->contains('code', $permissionCode)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         foreach ($this->roles()->get() as $role) {
-            if ($role->permissions()->where('code', $permissionCode)->count() > 0) {
+            if ($role->permissions()->where('code', $permissionCode)->exists()) {
                 return true;
             }
         }
