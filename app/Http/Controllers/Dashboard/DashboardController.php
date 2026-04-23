@@ -133,26 +133,41 @@ final class DashboardController extends Controller
                 ->where('u_event.primary_unit_id', $user->primary_unit_id);
         }
 
-        $delegationCount = (int) (clone $delegationBaseQuery)->count();
+        // --- AGGREGATE COUNTS & VALUES ---
+        $delegationStats = (clone $delegationBaseQuery)
+            ->select([
+                DB::raw('COUNT(*) as total_count'),
+                DB::raw('SUM(CASE WHEN status NOT IN (3, 4) THEN 1 ELSE 0 END) as active_count')
+            ])
+            ->first();
+
         $taskCount = (int) (clone $taskBaseQuery)->count();
-        $eventCount = (int) (clone $eventBaseQuery)->count();
+
+        $eventStats = (clone $eventBaseQuery)
+            ->select([
+                DB::raw('COUNT(*) as total_count'),
+                DB::raw('SUM(CASE WHEN event.start_at >= \'' . now()->toDateTimeString() . '\' THEN 1 ELSE 0 END) as upcoming_count')
+            ])
+            ->first();
+
+        $pipelineStats = DB::table('ipa_pipeline_project as project')
+            ->leftJoin('ipa_md_pipeline_stage as stage', 'stage.id', '=', 'project.stage_id')
+            ->select([
+                DB::raw('COUNT(project.id) as total_count'),
+                DB::raw('SUM(project.estimated_value) as total_value'),
+                DB::raw('SUM(CASE WHEN stage.code NOT IN (\'CLOSED_WON\', \'CLOSED_LOST\') THEN project.estimated_value ELSE 0 END) as active_value')
+            ])
+            ->first();
 
         $partnerCount = (int) DB::table('ipa_partner')->whereNull('deleted_at')->count();
-        $pipelineCount = (int) DB::table('ipa_pipeline_project')->count();
 
-        $activeDelegationCount = (int) (clone $delegationBaseQuery)
-            ->whereNotIn('status', [3, 4])
-            ->count();
-
-        $upcomingEventCount = (int) (clone $eventBaseQuery)
-            ->where('event.start_at', '>=', now())
-            ->count();
-
-        $totalPipelineValue = (float) DB::table('ipa_pipeline_project')->sum('estimated_value');
-        $activePipelineValue = (float) DB::table('ipa_pipeline_project as project')
-            ->join('ipa_md_pipeline_stage as stage', 'stage.id', '=', 'project.stage_id')
-            ->whereNotIn('stage.code', ['CLOSED_WON', 'CLOSED_LOST'])
-            ->sum('project.estimated_value');
+        $delegationCount = (int) ($delegationStats->total_count ?? 0);
+        $activeDelegationCount = (int) ($delegationStats->active_count ?? 0);
+        $eventCount = (int) ($eventStats->total_count ?? 0);
+        $upcomingEventCount = (int) ($eventStats->upcoming_count ?? 0);
+        $pipelineCount = (int) ($pipelineStats->total_count ?? 0);
+        $totalPipelineValue = (float) ($pipelineStats->total_value ?? 0);
+        $activePipelineValue = (float) ($pipelineStats->active_value ?? 0);
 
         $stageBreakdown = DB::table('ipa_pipeline_project as project')
             ->join('ipa_md_pipeline_stage as stage', 'stage.id', '=', 'project.stage_id')
