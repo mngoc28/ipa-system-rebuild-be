@@ -34,7 +34,26 @@ Route::prefix('v1')->group(function (): void {
         ]);
     });
 
+    Route::get('/test-db', function () {
+        try {
+            \DB::connection()->getPdo();
+            $tables = \DB::select('SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = \'public\'');
+            return response()->json([
+                'status' => 'success',
+                'database' => \DB::connection()->getDatabaseName(),
+                'tables' => array_column($tables, 'tablename')
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    });
+
     Route::prefix('auth')->group(function (): void {
+
         Route::post('login', [AuthController::class, 'login']);
         Route::get('me', [AuthController::class, 'me'])->middleware('jwt.auth');
         Route::post('logout', [AuthController::class, 'logout'])->middleware('jwt.auth');
