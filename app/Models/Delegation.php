@@ -90,7 +90,7 @@ class Delegation extends Model
 
     public function partners(): BelongsToMany
     {
-        return $this->belongsToMany(Partner::class, 'ipa_delegation_partner_link', 'delegation_id', 'partner_id');
+        return $this->belongsToMany(Partner::class, 'ipa_delegation_partner_link', 'delegation_id', 'partner_id')->withTimestamps();
     }
 
     public function owner(): BelongsTo
@@ -125,7 +125,7 @@ class Delegation extends Model
 
     public function sectors(): BelongsToMany
     {
-        return $this->belongsToMany(Sector::class, 'ipa_delegation_sector_link', 'delegation_id', 'sector_id');
+        return $this->belongsToMany(Sector::class, 'ipa_delegation_sector_link', 'delegation_id', 'sector_id')->withTimestamps();
     }
 
     public function contacts(): HasMany
