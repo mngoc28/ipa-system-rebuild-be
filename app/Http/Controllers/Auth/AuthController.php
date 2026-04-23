@@ -72,11 +72,15 @@ final class AuthController extends Controller
             'updated_at' => now(),
         ]);
 
+        $userData = $user->toArray();
+        $userData['role_codes'] = $user->role_codes;
+        $userData['permission_codes'] = $user->permission_codes;
+
         return $this->successResponse([
             'accessToken' => $token,
             'refreshToken' => $refreshToken,
             'expiresIn' => (int) config('jwt.ttl', 60) * 60,
-            'user' => $user,
+            'user' => $userData,
         ], __('auth.login_success'));
     }
 
@@ -88,8 +92,13 @@ final class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
+        $user = $request->user()->load(['roles', 'roles.permissions', 'unit']);
+        $userData = $user->toArray();
+        $userData['role_codes'] = $user->role_codes;
+        $userData['permission_codes'] = $user->permission_codes;
+
         return $this->successResponse(
-            $request->user()->load(['roles', 'roles.permissions', 'unit']),
+            $userData,
             __('auth.login_success')
         );
     }

@@ -346,25 +346,21 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
             'CITY_PCI_SATISFACTION_2026',
         ];
 
+        $rows = DB::table('ipa_kpi_metric as metric')
+            ->join('ipa_kpi_snapshot as snapshot', 'snapshot.metric_id', '=', 'metric.id')
+            ->select([
+                DB::raw('DISTINCT ON (metric.metric_code) metric.metric_code'),
+                'snapshot.value_numeric',
+            ])
+            ->whereIn('metric.metric_code', $codes)
+            ->orderBy('metric.metric_code')
+            ->orderByDesc('snapshot.snapshot_date')
+            ->orderByDesc('snapshot.id')
+            ->get();
+
         $values = [];
-
-        foreach ($codes as $code) {
-            $row = DB::table('ipa_kpi_metric as metric')
-                ->leftJoin('ipa_kpi_snapshot as snapshot', 'snapshot.metric_id', '=', 'metric.id')
-                ->select([
-                    'metric.id',
-                    'metric.metric_code',
-                    'snapshot.value_numeric',
-                    'snapshot.snapshot_date',
-                ])
-                ->where('metric.metric_code', $code)
-                ->orderByDesc('snapshot.snapshot_date')
-                ->orderByDesc('snapshot.id')
-                ->first();
-
-            if ($row && $row->value_numeric !== null) {
-                $values[$code] = (float) $row->value_numeric;
-            }
+        foreach ($rows as $row) {
+            $values[(string) $row->metric_code] = (float) $row->value_numeric;
         }
 
         return $values;
