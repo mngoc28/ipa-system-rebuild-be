@@ -184,7 +184,6 @@ class DelegationRepository implements DelegationRepositoryInterface
 
         if ($scheduleItems !== []) {
             $events = array_map(static fn (array $scheduleItem) => [
-                'delegation_id' => $delegation->id,
                 'title' => trim((string) $scheduleItem['title']),
                 'description' => isset($scheduleItem['note']) ? trim((string) $scheduleItem['note']) : null,
                 'event_type' => 1,
@@ -197,7 +196,7 @@ class DelegationRepository implements DelegationRepositoryInterface
                 'organizer_user_id' => (int) $delegation->owner_user_id,
             ], $scheduleItems);
 
-            Event::insert($events);
+            $delegation->events()->createMany($events);
         }
 
         if ($partnerIds !== []) {
@@ -306,7 +305,6 @@ class DelegationRepository implements DelegationRepositoryInterface
 
                 if ($scheduleItems !== []) {
                     $events = array_map(static fn (array $item) => [
-                        'delegation_id' => $record->id,
                         'title' => trim((string) $item['title']),
                         'description' => isset($item['note']) ? trim((string) $item['note']) : null,
                         'event_type' => 1,
@@ -318,7 +316,7 @@ class DelegationRepository implements DelegationRepositoryInterface
                         'logistics_note' => $item['logistics_note'] ?? null,
                         'organizer_user_id' => (int) $record->owner_user_id,
                     ], $scheduleItems);
-                    \App\Models\Event::insert($events);
+                    $record->events()->createMany($events);
                 }
             }
 
