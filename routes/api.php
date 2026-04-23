@@ -34,6 +34,13 @@ Route::prefix('v1')->group(function (): void {
         ]);
     });
 
+    Route::get('/ping', function () {
+        return response()->json([
+            'status' => 'pong',
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    });
+
     Route::get('/test-db', function () {
         try {
             \DB::connection()->getPdo();
