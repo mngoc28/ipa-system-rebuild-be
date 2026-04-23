@@ -94,13 +94,14 @@ class Handler extends ExceptionHandler
             }
 
             return $this->jsonError(
-                $exception->getMessage() ?: __('auth.general_error'),
+                $exception->getMessage() . " (File: " . $exception->getFile() . " Line: " . $exception->getLine() . ")",
                 HttpStatus::INTERNAL_SERVER_ERROR
             );
         }
 
         return parent::render($request, $exception);
     }
+
 
     /**
      * Summary of jsonError
