@@ -61,7 +61,7 @@ final class TeamRepository implements TeamRepositoryInterface
 
         $taskStatsSubquery = DB::table('ipa_task_assignee as ta')
             ->leftJoin('ipa_task as t', 't.id', '=', 'ta.task_id')
-            ->selectRaw('ta.user_id, COUNT(*) as total_tasks, SUM(CASE WHEN t.is_overdue_cache = 1 THEN 1 ELSE 0 END) as overdue_tasks')
+            ->selectRaw('ta.user_id, COUNT(*) as total_tasks, SUM(CASE WHEN t.is_overdue_cache THEN 1 ELSE 0 END) as overdue_tasks')
             ->groupBy('ta.user_id');
 
         $baseQuery = DB::table('ipa_user as u')
@@ -218,7 +218,7 @@ final class TeamRepository implements TeamRepositoryInterface
             ->leftJoinSub(
                 DB::table('ipa_task_assignee as ta')
                     ->leftJoin('ipa_task as t', 't.id', '=', 'ta.task_id')
-                    ->selectRaw('ta.user_id, COUNT(*) as total_tasks, SUM(CASE WHEN t.is_overdue_cache = 1 THEN 1 ELSE 0 END) as overdue_tasks')
+                    ->selectRaw('ta.user_id, COUNT(*) as total_tasks, SUM(CASE WHEN t.is_overdue_cache THEN 1 ELSE 0 END) as overdue_tasks')
                     ->groupBy('ta.user_id'),
                 'task_stats',
                 'task_stats.user_id',
