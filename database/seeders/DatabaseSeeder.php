@@ -28,6 +28,7 @@ final class DatabaseSeeder extends Seeder
             IpaUserSeeder::class,
             IpaRoleSeeder::class,
             IpaUserRoleSeeder::class,
+            IpaRbacFakeDataSeeder::class,
             IpaPartnerSeeder::class,
             IpaPartnerContactSeeder::class,
             IpaPartnerInteractionSeeder::class,
@@ -45,7 +46,6 @@ final class DatabaseSeeder extends Seeder
             IpaLoginAttemptSeeder::class,
             IpaTaskCommentSeeder::class,
             IpaLinkedChildSeeder::class,
-            IpaRbacFakeDataSeeder::class,
         ]);
     }
 

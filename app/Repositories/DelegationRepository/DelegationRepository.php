@@ -166,11 +166,11 @@ class DelegationRepository implements DelegationRepositoryInterface
 
         return [
             'items' => $items,
-            'pagination' => [
-                'current_page' => $page,
-                'per_page'     => $perPage,
-                'total'        => $total,
-                'last_page'    => (int) ceil($total / $perPage),
+            'meta' => [
+                'page'       => $page,
+                'pageSize'   => $perPage,
+                'total'      => $total,
+                'totalPages' => (int) ceil($total / $perPage),
             ],
         ];
     }

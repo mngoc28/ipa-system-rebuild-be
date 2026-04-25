@@ -414,7 +414,7 @@ final class AdminUserRepository extends BaseRepository implements AdminUserRepos
                 ? (str_starts_with((string) $row->avatar_url, 'http')
                     ? (string) $row->avatar_url
                     : (str_starts_with((string) $row->avatar_url, 'avatars/')
-                        ? Cloudinary::getUrl((string) $row->avatar_url)
+                        ? "https://res.cloudinary.com/" . config('cloudinary.cloud_name') . "/image/upload/" . (string) $row->avatar_url
                         : rtrim((string) config('app.url'), '/') . '/storage/' . (string) $row->avatar_url))
                 : "https://ui-avatars.com/api/?name=" . urlencode((string) ($row->full_name ?? 'User')) . "&background=DBEAFE&color=3B82F6&bold=true",
             'status' => ((int) $row->status === 1 ? 'active' : 'inactive'),

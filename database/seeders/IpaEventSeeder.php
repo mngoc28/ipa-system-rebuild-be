@@ -22,7 +22,13 @@ final class IpaEventSeeder extends Seeder
 
         $delegations = Delegation::orderBy('id')->get();
         $locationIds = Location::orderBy('id')->pluck('id')->all();
-        $organizerIds = AdminUser::orderBy('id')->pluck('id')->all();
+        $organizerIds = AdminUser::where('id', '>=', 41)->orderBy('id')->pluck('id')->all();
+        if (empty($organizerIds)) {
+            $organizerIds = AdminUser::orderBy('id')->pluck('id')->all();
+        }
+
+        // Dùng chung danh sách ID >= 41 cho cả organizer và staff_id để đảm bảo các tài khoản đăng nhập đều có lịch
+        $staffIds = $organizerIds;
 
         if ($delegations->isEmpty() || $locationIds === [] || $organizerIds === []) {
             return;
@@ -37,11 +43,11 @@ final class IpaEventSeeder extends Seeder
         ];
 
         foreach ($delegations as $delegationIndex => $delegation) {
-            for ($eventIndex = 0; $eventIndex < 3; $eventIndex++) {
+            for ($eventIndex = 0; $eventIndex < 10; $eventIndex++) {
                 $startAt = Carbon::parse($delegation->start_date)
-                    ->addHours(9 + ($eventIndex * 2))
-                    ->addDays($eventIndex);
-                $endAt = (clone $startAt)->addMinutes(90);
+                    ->addHours(8 + ($eventIndex))
+                    ->addDays($eventIndex % 3);
+                $endAt = (clone $startAt)->addMinutes(60);
 
                 Event::factory()->create([
                     'delegation_id' => $delegation->id,
@@ -52,7 +58,8 @@ final class IpaEventSeeder extends Seeder
                     'start_at' => $startAt,
                     'end_at' => $endAt,
                     'location_id' => $locationIds[($delegationIndex + $eventIndex) % count($locationIds)],
-                    'organizer_user_id' => $organizerIds[($delegationIndex + $eventIndex) % count($organizerIds)],
+                    'organizer_user_id' => $organizerIds[($delegationIndex * 10 + $eventIndex) % count($organizerIds)],
+                    'staff_id' => $staffIds[($delegationIndex * 10 + $eventIndex) % count($staffIds)],
                 ]);
             }
         }

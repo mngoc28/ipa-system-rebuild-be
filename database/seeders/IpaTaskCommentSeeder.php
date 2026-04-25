@@ -25,14 +25,19 @@ final class IpaTaskCommentSeeder extends Seeder
             return;
         }
 
+        $rows = [];
         foreach ($taskRows as $index => $task) {
             for ($commentIndex = 0; $commentIndex < 2; $commentIndex++) {
-                TaskComment::factory()->create([
+                $rows[] = [
                     'task_id' => $task->id,
                     'commenter_user_id' => $userIds[($index + $commentIndex) % count($userIds)],
                     'comment_text' => ($commentIndex === 0 ? 'Đã cập nhật tiến độ cho ' : 'Tiếp tục theo dõi ') . $task->title . '.',
-                ]);
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
             }
         }
+
+        DB::table('ipa_task_comment')->insert($rows);
     }
 }
