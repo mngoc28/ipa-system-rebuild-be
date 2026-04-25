@@ -13,34 +13,39 @@ final class IpaLinkedChildSeeder extends Seeder
 {
     public function run(): void
     {
-        $userIds = DB::table('ipa_user')->orderBy('id')->pluck('id')->all();
-        $roleIds = DB::table('ipa_role')->orderBy('id')->pluck('id')->all();
-        $countryIds = DB::table('ipa_country')->orderBy('id')->pluck('id')->all();
-        $sectorIds = DB::table('ipa_md_sector')->orderBy('id')->pluck('id')->all();
-        $stageIds = DB::table('ipa_md_pipeline_stage')->orderBy('id')->pluck('id')->all();
-        $partnerIds = DB::table('ipa_partner')->orderBy('id')->pluck('id')->all();
-        $delegations = DB::table('ipa_delegation')->orderBy('id')->get();
-        $delegationIds = $delegations->pluck('id')->all();
-        $events = DB::table('ipa_event')->orderBy('id')->get();
-        $eventIds = $events->pluck('id')->all();
-        $tasks = DB::table('ipa_task')->orderBy('id')->get();
-        $taskIds = $tasks->pluck('id')->all();
+        DB::transaction(function () {
+            $userIds = DB::table('ipa_user')->where('id', '>=', 41)->orderBy('id')->pluck('id')->all();
+            if (empty($userIds)) {
+                $userIds = DB::table('ipa_user')->orderBy('id')->pluck('id')->all();
+            }
+            $roleIds = DB::table('ipa_role')->orderBy('id')->pluck('id')->all();
+            $countryIds = DB::table('ipa_country')->orderBy('id')->pluck('id')->all();
+            $sectorIds = DB::table('ipa_md_sector')->orderBy('id')->pluck('id')->all();
+            $stageIds = DB::table('ipa_md_pipeline_stage')->orderBy('id')->pluck('id')->all();
+            $partnerIds = DB::table('ipa_partner')->orderBy('id')->pluck('id')->all();
+            $delegations = DB::table('ipa_delegation')->orderBy('id')->get();
+            $delegationIds = $delegations->pluck('id')->all();
+            $events = DB::table('ipa_event')->orderBy('id')->get();
+            $eventIds = $events->pluck('id')->all();
+            $tasks = DB::table('ipa_task')->orderBy('id')->get();
+            $taskIds = $tasks->pluck('id')->all();
 
-        if ($userIds === [] || $partnerIds === [] || $delegationIds === [] || $eventIds === [] || $taskIds === []) {
-            return;
-        }
+            if ($userIds === [] || $partnerIds === [] || $delegationIds === [] || $eventIds === [] || $taskIds === []) {
+                return;
+            }
 
-        $this->seedPartnerTagsAndContacts($partnerIds, $userIds, $stageIds, $delegationIds);
-        $this->seedDelegationChildren($delegations, $userIds);
-        $this->seedEventChildren($events, $userIds);
-        $this->seedTaskChildren($tasks, $userIds);
+            $this->seedPartnerTagsAndContacts($partnerIds, $userIds, $stageIds, $delegationIds);
+            $this->seedDelegationChildren($delegations, $userIds);
+            $this->seedEventChildren($events, $userIds);
+            $this->seedTaskChildren($tasks, $userIds);
 
-        $minutesIds = $this->seedMinutesFlow($delegations, $eventIds, $userIds);
-        $fileIds = $this->seedFoldersAndFiles($delegationIds, $minutesIds, $taskIds, $userIds);
-        $this->seedFileChildren($fileIds, $userIds);
-        $this->seedMinutesAttachmentsAndWorkflow($minutesIds, $userIds, $fileIds, $delegationIds, $eventIds);
-        $this->seedPipelineAndReporting($partnerIds, $countryIds, $sectorIds, $stageIds, $userIds, $fileIds, $delegationIds, $minutesIds);
-        $this->seedNotificationFlow($userIds, $delegationIds, $taskIds, $minutesIds, $roleIds);
+            $minutesIds = $this->seedMinutesFlow($delegations, $eventIds, $userIds);
+            $fileIds = $this->seedFoldersAndFiles($delegationIds, $minutesIds, $taskIds, $userIds);
+            $this->seedFileChildren($fileIds, $userIds);
+            $this->seedMinutesAttachmentsAndWorkflow($minutesIds, $userIds, $fileIds, $delegationIds, $eventIds);
+            $this->seedPipelineAndReporting($partnerIds, $countryIds, $sectorIds, $stageIds, $userIds, $fileIds, $delegationIds, $minutesIds);
+            $this->seedNotificationFlow($userIds, $delegationIds, $taskIds, $minutesIds, $roleIds);
+        });
     }
 
     private function seedPartnerTagsAndContacts(array $partnerIds, array $userIds, array $stageIds, array $delegationIds): void
@@ -134,10 +139,10 @@ final class IpaLinkedChildSeeder extends Seeder
         DB::table('ipa_partner_project')->insert($partnerProjectRows);
 
         $contactIds = DB::table('ipa_partner_contact')->orderBy('id')->pluck('id')->all();
-
+        $delegationContactRows = [];
         foreach ($partnerIds as $index => $partnerId) {
             for ($linkIndex = 0; $linkIndex < 2; $linkIndex++) {
-                DB::table('ipa_delegation_contact')->insert([
+                $delegationContactRows[] = [
                     'delegation_id' => $delegationIds[$index % count($delegationIds)],
                     'partner_contact_id' => $contactIds[($index * 2 + $linkIndex) % count($contactIds)],
                     'name' => 'Đầu mối ' . ($index + 1) . '-' . ($linkIndex + 1),
@@ -147,41 +152,46 @@ final class IpaLinkedChildSeeder extends Seeder
                     'is_primary' => $linkIndex === 0,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
         }
+        DB::table('ipa_delegation_contact')->insert($delegationContactRows);
 
+        $tagLinkRows = [];
         foreach ($delegationIds as $index => $delegationId) {
             foreach ([0, 1] as $tagOffset) {
-                DB::table('ipa_delegation_tag_link')->insert([
+                $tagLinkRows[] = [
                     'delegation_id' => $delegationId,
                     'tag_id' => $tagIds[($index + $tagOffset) % count($tagIds)],
                     'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                ];
             }
         }
+        DB::table('ipa_delegation_tag_link')->insert($tagLinkRows);
     }
 
     private function seedDelegationChildren($delegations, array $userIds): void
     {
         $partnerContacts = DB::table('ipa_partner_contact')->orderBy('id')->pluck('id')->all();
+        $checklistRows = [];
+        $outcomeRows = [];
+        $contactRows = [];
 
         foreach ($delegations as $index => $delegation) {
             for ($itemIndex = 0; $itemIndex < 4; $itemIndex++) {
-                DB::table('ipa_delegation_checklist')->insert([
+                $checklistRows[] = [
                     'delegation_id' => $delegation->id,
-                    'item_name' => 'Chuẩn bị ' . ['tài liệu', 'lịch làm việc', 'phòng họp', 'biên bản'][ $itemIndex ],
+                    'item_name' => 'Chuẩn bị ' . ['tài liệu', 'lịch làm việc', 'phòng họp', 'biên bản'][$itemIndex],
                     'assignee_user_id' => $userIds[($index + $itemIndex) % count($userIds)],
                     'due_date' => Carbon::parse($delegation->end_date)->subDays(4 - $itemIndex)->toDateString(),
                     'status' => $itemIndex === 3 ? 1 : 0,
                     'priority' => ($itemIndex % 3) + 1,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
 
-            DB::table('ipa_delegation_outcome')->insert([
+            $outcomeRows[] = [
                 'delegation_id' => $delegation->id,
                 'progress_percent' => $delegation->status === 3 ? 100 : ($delegation->status === 2 ? 70 : 25),
                 'summary' => 'Tổng hợp tiến độ làm việc cho ' . $delegation->name,
@@ -189,10 +199,10 @@ final class IpaLinkedChildSeeder extends Seeder
                 'report_updated_at' => Carbon::parse($delegation->end_date)->endOfDay(),
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
 
             for ($contactIndex = 0; $contactIndex < 2; $contactIndex++) {
-                DB::table('ipa_delegation_contact')->insert([
+                $contactRows[] = [
                     'delegation_id' => $delegation->id,
                     'partner_contact_id' => $partnerContacts !== [] ? $partnerContacts[($index * 2 + $contactIndex) % count($partnerContacts)] : null,
                     'name' => 'Đại diện ' . ($index + 1) . '-' . ($contactIndex + 1),
@@ -202,16 +212,23 @@ final class IpaLinkedChildSeeder extends Seeder
                     'is_primary' => $contactIndex === 0,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
         }
+
+        DB::table('ipa_delegation_checklist')->insert($checklistRows);
+        DB::table('ipa_delegation_outcome')->insert($outcomeRows);
+        DB::table('ipa_delegation_contact')->insert($contactRows);
     }
 
     private function seedEventChildren($events, array $userIds): void
     {
+        $externalRows = [];
+        $rescheduleRows = [];
+
         foreach ($events as $index => $event) {
             if ($index % 2 === 0) {
-                DB::table('ipa_event_external_participant')->insert([
+                $externalRows[] = [
                     'event_id' => $event->id,
                     'full_name' => 'Ông Nguyễn Văn Minh ' . ($index + 1),
                     'organization_name' => 'FPT',
@@ -219,11 +236,11 @@ final class IpaLinkedChildSeeder extends Seeder
                     'phone' => '09' . str_pad((string) (84000000 + $index), 8, '0', STR_PAD_LEFT),
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
 
             if ($index % 3 === 0) {
-                DB::table('ipa_event_reschedule_request')->insert([
+                $rescheduleRows[] = [
                     'event_id' => $event->id,
                     'requested_by' => $userIds[$index % count($userIds)],
                     'proposed_start_at' => Carbon::parse($event->start_at)->addDays(1),
@@ -232,28 +249,34 @@ final class IpaLinkedChildSeeder extends Seeder
                     'status' => $index % 2,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
         }
+
+        DB::table('ipa_event_external_participant')->insert($externalRows);
+        DB::table('ipa_event_reschedule_request')->insert($rescheduleRows);
     }
 
     private function seedTaskChildren($tasks, array $userIds): void
     {
+        $assigneeRows = [];
+        $historyRows = [];
+
         foreach ($tasks as $index => $task) {
-            DB::table('ipa_task_assignee')->insert([
+            $assigneeRows[] = [
                 'task_id' => $task->id,
                 'user_id' => $userIds[$index % count($userIds)],
                 'assignment_type' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
-            DB::table('ipa_task_assignee')->insert([
+            ];
+            $assigneeRows[] = [
                 'task_id' => $task->id,
                 'user_id' => $userIds[($index + 1) % count($userIds)],
                 'assignment_type' => 2,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
 
             $historyTransitions = match ((int) $task->status) {
                 0 => [[0, 0]],
@@ -262,7 +285,7 @@ final class IpaLinkedChildSeeder extends Seeder
             };
 
             foreach ($historyTransitions as $historyIndex => [$oldStatus, $newStatus]) {
-                DB::table('ipa_task_status_history')->insert([
+                $historyRows[] = [
                     'task_id' => $task->id,
                     'old_status' => $oldStatus,
                     'new_status' => $newStatus,
@@ -272,14 +295,18 @@ final class IpaLinkedChildSeeder extends Seeder
                         : Carbon::parse($task->due_at)->subDay(),
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
         }
+
+        DB::table('ipa_task_assignee')->insert($assigneeRows);
+        DB::table('ipa_task_status_history')->insert($historyRows);
     }
 
     private function seedMinutesFlow($delegations, array $eventIds, array $userIds): array
     {
         $minutesIds = [];
+        $approvalRows = [];
 
         foreach ($delegations as $index => $delegation) {
             $delegationEventIds = array_slice($eventIds, $index * 3, 3);
@@ -297,8 +324,9 @@ final class IpaLinkedChildSeeder extends Seeder
             ]);
             $minutesIds[] = $minutesId;
 
+            $versionIds = [];
             for ($versionNo = 1; $versionNo <= 2; $versionNo++) {
-                DB::table('ipa_minutes_version')->insert([
+                $versionIds[] = DB::table('ipa_minutes_version')->insertGetId([
                     'minutes_id' => $minutesId,
                     'version_no' => $versionNo,
                     'content_text' => 'Nội dung biên bản phiên ' . $versionNo . ' cho ' . $delegation->name,
@@ -311,7 +339,6 @@ final class IpaLinkedChildSeeder extends Seeder
                 ]);
             }
 
-            $versionIds = DB::table('ipa_minutes_version')->where('minutes_id', $minutesId)->orderBy('version_no')->pluck('id')->all();
             $commentIds = [];
             for ($commentIndex = 0; $commentIndex < 3; $commentIndex++) {
                 $commentIds[] = DB::table('ipa_minutes_comment')->insertGetId([
@@ -326,7 +353,7 @@ final class IpaLinkedChildSeeder extends Seeder
             }
 
             for ($approvalIndex = 0; $approvalIndex < 2; $approvalIndex++) {
-                DB::table('ipa_minutes_approval')->insert([
+                $approvalRows[] = [
                     'minutes_id' => $minutesId,
                     'approver_user_id' => $userIds[($index + $approvalIndex + 1) % count($userIds)],
                     'decision' => $delegation->status === 3 ? 1 : 0,
@@ -334,9 +361,11 @@ final class IpaLinkedChildSeeder extends Seeder
                     'decided_at' => Carbon::parse($delegation->end_date)->addHours(8 + $approvalIndex),
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
         }
+
+        DB::table('ipa_minutes_approval')->insert($approvalRows);
 
         return $minutesIds;
     }
@@ -367,8 +396,6 @@ final class IpaLinkedChildSeeder extends Seeder
                 'checksum' => 'chk-del-' . $delegationId,
                 'uploaded_by' => $userIds[$index % count($userIds)],
                 'delegation_id' => $delegationId,
-                'minutes_id' => null,
-                'task_id' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -384,9 +411,7 @@ final class IpaLinkedChildSeeder extends Seeder
                 'storage_key' => 'files/minutes/' . $minutesId . '.docx',
                 'checksum' => 'chk-min-' . $minutesId,
                 'uploaded_by' => $userIds[$index % count($userIds)],
-                'delegation_id' => null,
                 'minutes_id' => $minutesId,
-                'task_id' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -402,8 +427,6 @@ final class IpaLinkedChildSeeder extends Seeder
                 'storage_key' => 'files/task/' . $taskId . '.xlsx',
                 'checksum' => 'chk-task-' . $taskId,
                 'uploaded_by' => $userIds[$index % count($userIds)],
-                'delegation_id' => null,
-                'minutes_id' => null,
                 'task_id' => $taskId,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -415,8 +438,12 @@ final class IpaLinkedChildSeeder extends Seeder
 
     private function seedFileChildren(array $fileIds, array $userIds): void
     {
+        $versionRows = [];
+        $shareRows = [];
+        $logRows = [];
+
         foreach ($fileIds as $index => $fileId) {
-            DB::table('ipa_file_version')->insert([
+            $versionRows[] = [
                 'file_id' => $fileId,
                 'version_no' => 1,
                 'storage_key' => 'v1/' . $fileId,
@@ -424,9 +451,9 @@ final class IpaLinkedChildSeeder extends Seeder
                 'updated_by' => $userIds[$index % count($userIds)],
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
 
-            DB::table('ipa_file_share')->insert([
+            $shareRows[] = [
                 'file_id' => $fileId,
                 'shared_with_user_id' => $userIds[($index + 1) % count($userIds)],
                 'shared_with_role_id' => null,
@@ -434,9 +461,9 @@ final class IpaLinkedChildSeeder extends Seeder
                 'expires_at' => Carbon::now()->addDays(7),
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
 
-            DB::table('ipa_file_access_log')->insert([
+            $logRows[] = [
                 'file_id' => $fileId,
                 'user_id' => $userIds[$index % count($userIds)],
                 'action' => $index % 3,
@@ -444,14 +471,23 @@ final class IpaLinkedChildSeeder extends Seeder
                 'action_at' => Carbon::now()->subHours($index),
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
         }
+
+        DB::table('ipa_file_version')->insert($versionRows);
+        DB::table('ipa_file_share')->insert($shareRows);
+        DB::table('ipa_file_access_log')->insert($logRows);
     }
 
     private function seedMinutesAttachmentsAndWorkflow(array $minutesIds, array $userIds, array $fileIds, array $delegationIds, array $eventIds): void
     {
+        $signatureRows = [];
+        $attachmentRows = [];
+        $historyRows = [];
+        $stepRows = [];
+
         foreach ($minutesIds as $index => $minutesId) {
-            DB::table('ipa_minutes_signature')->insert([
+            $signatureRows[] = [
                 'minutes_id' => $minutesId,
                 'signer_user_id' => $userIds[$index % count($userIds)],
                 'signer_name' => 'Người ký ' . ($index + 1),
@@ -460,17 +496,20 @@ final class IpaLinkedChildSeeder extends Seeder
                 'signed_at' => $index % 2 === 0 ? Carbon::now()->subDays(1) : null,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
 
             if ($index % 2 === 0) {
-                DB::table('ipa_task_attachment')->insert([
+                $attachmentRows[] = [
                     'task_id' => DB::table('ipa_task')->orderBy('id')->skip($index)->value('id'),
                     'file_id' => $fileIds[$index % count($fileIds)],
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
         }
+
+        DB::table('ipa_minutes_signature')->insert($signatureRows);
+        DB::table('ipa_task_attachment')->insert($attachmentRows);
 
         foreach ($minutesIds as $index => $minutesId) {
             $requestId = DB::table('ipa_approval_request')->insertGetId([
@@ -487,7 +526,7 @@ final class IpaLinkedChildSeeder extends Seeder
             ]);
 
             for ($step = 1; $step <= 2; $step++) {
-                DB::table('ipa_approval_step')->insert([
+                $stepRows[] = [
                     'approval_request_id' => $requestId,
                     'approver_user_id' => $userIds[($index + $step) % count($userIds)],
                     'step_order' => $step,
@@ -496,10 +535,10 @@ final class IpaLinkedChildSeeder extends Seeder
                     'decided_at' => Carbon::now()->subDay(),
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
 
-            DB::table('ipa_approval_history')->insert([
+            $historyRows[] = [
                 'approval_request_id' => $requestId,
                 'old_status' => 0,
                 'new_status' => $index % 3 === 0 ? 1 : 2,
@@ -507,8 +546,11 @@ final class IpaLinkedChildSeeder extends Seeder
                 'changed_at' => Carbon::now()->subHours(12),
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
         }
+
+        DB::table('ipa_approval_step')->insert($stepRows);
+        DB::table('ipa_approval_history')->insert($historyRows);
     }
 
     private function seedPipelineAndReporting(array $partnerIds, array $countryIds, array $sectorIds, array $stageIds, array $userIds, array $fileIds, array $delegationIds, array $minutesIds): void
@@ -561,9 +603,10 @@ final class IpaLinkedChildSeeder extends Seeder
         }
 
         $metricIds = DB::table('ipa_kpi_metric')->orderBy('id')->pluck('id')->all();
+        $snapshotRows = [];
         foreach ($metricIds as $index => $metricId) {
             for ($snapshotIndex = 0; $snapshotIndex < 2; $snapshotIndex++) {
-                DB::table('ipa_kpi_snapshot')->insert([
+                $snapshotRows[] = [
                     'metric_id' => $metricId,
                     'snapshot_date' => Carbon::now()->subDays(($index * 2) + $snapshotIndex)->toDateString(),
                     'org_unit_id' => DB::table('ipa_org_unit')->orderBy('id')->skip($index % DB::table('ipa_org_unit')->count())->value('id'),
@@ -572,12 +615,14 @@ final class IpaLinkedChildSeeder extends Seeder
                     'value_text' => $snapshotIndex === 1 ? 'GOOD' : null,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
         }
+        DB::table('ipa_kpi_snapshot')->insert($snapshotRows);
 
+        $pipelineRows = [];
         foreach ($partnerIds as $index => $partnerId) {
-            DB::table('ipa_pipeline_project')->insert([
+            $pipelineRows[] = [
                 'project_code' => 'PROJ-2026-' . str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
                 'project_name' => 'Dự án ' . $partnerId,
                 'partner_id' => $partnerId,
@@ -591,12 +636,14 @@ final class IpaLinkedChildSeeder extends Seeder
                 'status' => $index % 4,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
         }
+        DB::table('ipa_pipeline_project')->insert($pipelineRows);
 
         $pipelineIds = DB::table('ipa_pipeline_project')->orderBy('id')->pluck('id')->all();
+        $pipelineHistoryRows = [];
         foreach ($pipelineIds as $index => $pipelineId) {
-            DB::table('ipa_pipeline_stage_history')->insert([
+            $pipelineHistoryRows[] = [
                 'pipeline_project_id' => $pipelineId,
                 'old_stage_id' => $stageIds[$index % count($stageIds)],
                 'new_stage_id' => $stageIds[($index + 1) % count($stageIds)],
@@ -604,12 +651,14 @@ final class IpaLinkedChildSeeder extends Seeder
                 'changed_at' => Carbon::now()->subDays($index),
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
         }
+        DB::table('ipa_pipeline_stage_history')->insert($pipelineHistoryRows);
 
+        $reportRunRows = [];
         foreach ($reportDefs as $index => $definition) {
             $reportId = DB::table('ipa_report_definition')->where('report_code', $definition['code'])->value('id');
-            DB::table('ipa_report_run')->insert([
+            $reportRunRows[] = [
                 'report_definition_id' => $reportId,
                 'run_by' => $userIds[$index % count($userIds)],
                 'params_json' => json_encode(['delegationId' => $delegationIds[$index % count($delegationIds)]], JSON_UNESCAPED_UNICODE),
@@ -620,8 +669,9 @@ final class IpaLinkedChildSeeder extends Seeder
                 'error_message' => $index % 4 === 3 ? 'Lỗi dữ liệu đầu vào.' : null,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
         }
+        DB::table('ipa_report_run')->insert($reportRunRows);
     }
 
     private function seedNotificationFlow(array $userIds, array $delegationIds, array $taskIds, array $minutesIds, array $roleIds): void
@@ -666,19 +716,22 @@ final class IpaLinkedChildSeeder extends Seeder
                 'updated_at' => now(),
             ]);
 
+            $recipientRows = [];
             foreach ([0, 1, 2] as $recipientIndex) {
-                DB::table('ipa_notification_recipient')->insert([
+                $recipientRows[] = [
                     'notification_id' => $notificationId,
                     'recipient_user_id' => $userIds[($index + $recipientIndex) % count($userIds)],
                     'delivery_status' => $recipientIndex === 0 ? 2 : ($recipientIndex === 1 ? 1 : 0),
                     'read_at' => $recipientIndex === 0 ? Carbon::now()->subHours(1) : null,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
+            DB::table('ipa_notification_recipient')->insert($recipientRows);
 
+            $channelRows = [];
             foreach ([0, 1] as $channelIndex) {
-                DB::table('ipa_notification_channel')->insert([
+                $channelRows[] = [
                     'notification_id' => $notificationId,
                     'channel_type' => $channelIndex,
                     'provider_message_id' => 'MSG-' . $notificationId . '-' . $channelIndex,
@@ -686,8 +739,9 @@ final class IpaLinkedChildSeeder extends Seeder
                     'fail_reason' => $channelIndex === 1 && $index % 3 === 0 ? 'Timeout from provider' : null,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
+            DB::table('ipa_notification_channel')->insert($channelRows);
         }
     }
 }

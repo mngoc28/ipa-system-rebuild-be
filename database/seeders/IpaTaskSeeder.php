@@ -22,7 +22,10 @@ final class IpaTaskSeeder extends Seeder
 
         $delegations = Delegation::orderBy('id')->get();
         $eventMap = Event::orderBy('id')->get()->groupBy('delegation_id');
-        $userIds = AdminUser::orderBy('id')->pluck('id')->all();
+        $userIds = AdminUser::where('id', '>=', 41)->orderBy('id')->pluck('id')->all();
+        if (empty($userIds)) {
+            $userIds = AdminUser::orderBy('id')->pluck('id')->all();
+        }
 
         if ($delegations->isEmpty() || $userIds === []) {
             return;
