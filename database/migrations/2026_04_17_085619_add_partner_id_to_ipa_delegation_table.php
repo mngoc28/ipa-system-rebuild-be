@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('ipa_delegation', function (Blueprint $table): void {
-            $table->unsignedBigInteger('partner_id')->nullable()->after('country_id');
+            $table->unsignedBigInteger('partner_id')->nullable();
         });
     }
 

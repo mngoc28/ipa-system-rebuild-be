@@ -25,8 +25,13 @@ trait ApiResponser
             "success" => true,
             "status"  => "success",
             "message" => $message,
-            "data"    => $data,
         ];
+
+        if (is_array($data) && (isset($data['items']) || isset($data['meta']))) {
+            $payload = array_merge($payload, $data);
+        } else {
+            $payload["data"] = $data;
+        }
 
         if ($meta !== null) {
             $payload["meta"] = $meta;
@@ -54,8 +59,13 @@ trait ApiResponser
             "success" => true,
             "status"  => "success",
             "message" => $message,
-            "data"    => $data,
         ];
+
+        if (is_array($data) && (isset($data['items']) || isset($data['meta']))) {
+            $payload = array_merge($payload, $data);
+        } else {
+            $payload["data"] = $data;
+        }
 
         if ($meta !== null) {
             $payload["meta"] = $meta;

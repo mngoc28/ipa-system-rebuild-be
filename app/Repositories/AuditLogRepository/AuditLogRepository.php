@@ -54,6 +54,18 @@ final class AuditLogRepository extends BaseRepository implements AuditLogReposit
                 'log.user_agent',
                 'log.created_at',
                 'user.full_name as actor_name',
+                DB::raw("
+                    CASE 
+                        WHEN log.action ILIKE '%delete%' OR log.action ILIKE '%xoa%' 
+                            OR log.action ILIKE '%remove%' OR log.action ILIKE '%trash%' THEN 'system'
+                        WHEN log.action ILIKE '%approve%' OR log.action ILIKE '%duyet%' 
+                            OR log.action ILIKE '%success%' OR log.action ILIKE '%create%' 
+                            OR log.action ILIKE '%update%' OR log.action ILIKE '%save%' THEN 'success'
+                        WHEN log.action ILIKE '%warning%' OR log.action ILIKE '%risk%' 
+                            OR log.action ILIKE '%lock%' OR log.action ILIKE '%blocked%' THEN 'warning'
+                        ELSE 'info'
+                    END as resolved_type
+                ")
             ]);
 
         if ($keyword !== '') {
@@ -78,39 +90,45 @@ final class AuditLogRepository extends BaseRepository implements AuditLogReposit
             $query->where('log.resource_type', 'like', '%' . $resourceType . '%');
         }
 
-        $rows = $query
-            ->orderByDesc('log.created_at')
+        if ($type !== '') {
+            $query->whereRaw("
+                CASE 
+                    WHEN log.action ILIKE '%delete%' OR log.action ILIKE '%xoa%' 
+                        OR log.action ILIKE '%remove%' OR log.action ILIKE '%trash%' THEN 'system'
+                    WHEN log.action ILIKE '%approve%' OR log.action ILIKE '%duyet%' 
+                        OR log.action ILIKE '%success%' OR log.action ILIKE '%create%' 
+                        OR log.action ILIKE '%update%' OR log.action ILIKE '%save%' THEN 'success'
+                    WHEN log.action ILIKE '%warning%' OR log.action ILIKE '%risk%' 
+                        OR log.action ILIKE '%lock%' OR log.action ILIKE '%blocked%' THEN 'warning'
+                    ELSE 'info'
+                END = ?
+            ", [$type]);
+        }
+
+        $paginator = $query->orderByDesc('log.created_at')
             ->orderByDesc('log.id')
-            ->get();
+            ->paginate($pageSize);
 
-        $items = $rows
+        $items = collect($paginator->items())
             ->map(function ($row): array {
-                $resolvedType = $this->resolveType((string) $row->action, (string) $row->resource_type);
-
                 return [
                     'id' => (string) $row->id,
                     'user' => $row->actor_name ?: 'System',
                     'action' => $this->formatAction((string) $row->action),
                     'detail' => $this->formatDetail($row),
                     'time' => $this->formatTime($row->created_at),
-                    'type' => $resolvedType,
+                    'type' => (string) $row->resolved_type,
                 ];
             })
-            ->when($type !== '', static function ($collection) use ($type) {
-                return $collection->filter(static fn (array $item): bool => $item['type'] === $type);
-            })
-            ->values();
-
-        $total = $items->count();
-        $items = $items->slice(($page - 1) * $pageSize, $pageSize)->values()->all();
+            ->all();
 
         return [
             'items' => $items,
             'meta' => [
-                'page' => $page,
-                'pageSize' => $pageSize,
-                'total' => $total,
-                'totalPages' => (int) ceil($total / $pageSize),
+                'page' => $paginator->currentPage(),
+                'pageSize' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'totalPages' => $paginator->lastPage(),
                 'sortBy' => 'created_at',
                 'sortDir' => 'desc',
             ],
@@ -142,31 +160,6 @@ final class AuditLogRepository extends BaseRepository implements AuditLogReposit
         return trim($resourceType . $resourceId);
     }
 
-    /**
-     * Resolve the UI category/type of the audit log entry for color-coding.
-     *
-     * @param string $action
-     * @param string $resourceType
-     * @return string (system|success|warning|info)
-     */
-    private function resolveType(string $action, string $resourceType): string
-    {
-        $action = Str::lower($action . ' ' . $resourceType);
-
-        if (Str::contains($action, ['delete', 'xoa', 'remove', 'trash'])) {
-            return 'system';
-        }
-
-        if (Str::contains($action, ['approve', 'duyet', 'success', 'create', 'update', 'save'])) {
-            return 'success';
-        }
-
-        if (Str::contains($action, ['warning', 'risk', 'lock', 'blocked'])) {
-            return 'warning';
-        }
-
-        return 'info';
-    }
 
     /**
      * Format a timestamp into the system's preferred display format.

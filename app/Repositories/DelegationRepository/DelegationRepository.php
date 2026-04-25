@@ -186,6 +186,20 @@ class DelegationRepository implements DelegationRepositoryInterface
     private function normalizeDelegation(object $row, array $partnerMap = [], array $sectorMap = []): array
     {
         $id = (int) $row->id;
+        $appUrl = rtrim((string) config('app.url'), '/');
+
+        // Faster avatar URL generation
+        $avatarUrl = null;
+        if ($row->owner_avatar_url) {
+            $avatarUrl = str_starts_with((string) $row->owner_avatar_url, 'http')
+                ? $row->owner_avatar_url
+                : $appUrl . '/storage/' . $row->owner_avatar_url;
+        } else {
+            $avatarUrl = 'https://ui-avatars.com/api/?name='
+                . urlencode((string) ($row->owner_full_name ?? 'User'))
+                . '&background=DBEAFE&color=3B82F6&bold=true';
+        }
+
         return [
             'id'                => $id,
             'code'              => $row->code,
@@ -215,13 +229,7 @@ class DelegationRepository implements DelegationRepositoryInterface
             'owner' => $row->owner_user_id ? [
                 'id'         => (int) $row->owner_user_id,
                 'full_name'  => $row->owner_full_name,
-                'avatar_url' => $row->owner_avatar_url
-                    ? (str_starts_with((string) $row->owner_avatar_url, 'http')
-                        ? $row->owner_avatar_url
-                        : rtrim((string) config('app.url'), '/') . '/storage/' . $row->owner_avatar_url)
-                    : 'https://ui-avatars.com/api/?name='
-                        . urlencode((string) ($row->owner_full_name ?? 'User'))
-                        . '&background=DBEAFE&color=3B82F6&bold=true',
+                'avatar_url' => $avatarUrl,
             ] : null,
             // Flat nested: host_unit
             'host_unit' => $row->host_unit_id ? [

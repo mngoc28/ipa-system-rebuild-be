@@ -245,7 +245,7 @@ final class TaskService
     {
         try {
             /** @var Task|null $task */
-            $task = $this->taskRepository->find($taskId);
+            $task = Task::with(['assignees', 'creator'])->find($taskId);
             if (!$task) {
                 return ['success' => false, 'message' => __('tasks.messages.not_found')];
             }

@@ -64,13 +64,45 @@ final class TeamRepository implements TeamRepositoryInterface
             ->selectRaw('ta.user_id, COUNT(*) as total_tasks, SUM(CASE WHEN t.is_overdue_cache THEN 1 ELSE 0 END) as overdue_tasks')
             ->groupBy('ta.user_id');
 
-        $baseQuery = DB::table('ipa_user as u')
+        $query = DB::table('ipa_user as u')
             ->leftJoin('ipa_user_unit_assignment as ua', function ($join): void {
                 $join->on('ua.user_id', '=', 'u.id')
                     ->where('ua.is_primary', '=', 1);
             })
             ->leftJoin('ipa_org_unit as ou', 'ou.id', '=', 'ua.unit_id')
-            ->leftJoinSub($taskStatsSubquery, 'task_stats', 'task_stats.user_id', '=', 'u.id')
+            ->leftJoinSub($taskStatsSubquery, 'task_stats', 'task_stats.user_id', '=', 'u.id');
+
+        if ($search) {
+            $query->where('u.full_name', 'like', '%' . $search . '%');
+        }
+
+        if ($unitId !== null) {
+            $query->where('u.primary_unit_id', $unitId);
+        }
+
+        // Optimized summary calculation using SQL aggregates
+        // We clone the query BEFORE adding specific selects or orders to avoid grouping issues
+        $summaryQuery = (clone $query);
+        $summaryResult = $summaryQuery->selectRaw("
+            COUNT(*) as total_members,
+            SUM(CASE
+                WHEN u.status = 1 AND (u.last_login_at IS NULL OR u.last_login_at <= ?) AND COALESCE(task_stats.overdue_tasks, 0) > 0 THEN 1
+                ELSE 0
+            END) as on_field,
+            SUM(CASE
+                WHEN u.status != 1 OR (u.status = 1 AND (u.last_login_at IS NULL OR u.last_login_at <= ?) 
+                    AND COALESCE(task_stats.overdue_tasks, 0) = 0 AND COALESCE(task_stats.total_tasks, 0) = 0) THEN 1
+                ELSE 0
+            END) as on_leave
+        ", [now()->subHours(8), now()->subHours(8)])->first();
+
+        // Re-calculate In Office properly (it's total - onField - onLeave)
+        $total = (int) ($summaryResult->total_members ?? 0);
+        $onFieldCount = (int) ($summaryResult->on_field ?? 0);
+        $onLeaveCount = (int) ($summaryResult->on_leave ?? 0);
+        $inOfficeCount = max(0, $total - $onFieldCount - $onLeaveCount);
+
+        $rows = $query
             ->select([
                 'u.id',
                 'u.full_name',
@@ -83,62 +115,67 @@ final class TeamRepository implements TeamRepositoryInterface
                 'ou.unit_name',
                 DB::raw('COALESCE(task_stats.total_tasks, 0) as total_tasks'),
                 DB::raw('COALESCE(task_stats.overdue_tasks, 0) as overdue_tasks'),
-            ]);
-
-        if ($search) {
-            $baseQuery->where('u.full_name', 'like', '%' . $search . '%');
-        }
-
-        if ($unitId !== null) {
-            $baseQuery->where('u.primary_unit_id', $unitId);
-        }
-
-        $baseQuery->orderBy('u.full_name');
-
-        $allRows = (clone $baseQuery)
-            ->orderBy('u.full_name')
-            ->get();
-
-        $total = $allRows->count();
-
-        $rows = (clone $baseQuery)
+                DB::raw("
+                    CASE 
+                        WHEN u.status != 1 THEN 'On Leave'
+                        WHEN u.last_login_at > '" . now()->subHours(8)->toDateTimeString() . "' THEN 'In Office'
+                        WHEN COALESCE(task_stats.overdue_tasks, 0) > 0 THEN 'On Field'
+                        WHEN COALESCE(task_stats.total_tasks, 0) = 0 THEN 'On Leave'
+                        ELSE 'In Office'
+                    END as resolved_status
+                ")
+            ])
             ->orderBy('u.full_name')
             ->offset(($page - 1) * $pageSize)
             ->limit($pageSize)
             ->get();
 
-        $members = $rows->map(function (object $row): array {
+        $cloudinaryCloudName = config('cloudinary.cloud_name');
+        $members = $rows->map(function (object $row) use ($cloudinaryCloudName): array {
             $totalTasks = (int) $row->total_tasks;
             $overdueTasks = (int) $row->overdue_tasks;
             $performance = max(0, min(100, 100 - ($overdueTasks * 15) - max(0, $totalTasks - $overdueTasks)));
+
+            // Faster avatar URL generation
+            $avatarUrl = null;
+            if ($row->avatar_url) {
+                $rawAvatar = (string) $row->avatar_url;
+                if (str_starts_with($rawAvatar, 'http')) {
+                    $avatarUrl = $rawAvatar;
+                } elseif (str_starts_with($rawAvatar, 'avatars/')) {
+                    $avatarUrl = "https://res.cloudinary.com/{$cloudinaryCloudName}/image/upload/{$rawAvatar}";
+                } else {
+                    $avatarUrl = rtrim((string) config('app.url'), '/') . '/storage/' . $rawAvatar;
+                }
+            } else {
+                $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode((string) ($row->full_name ?? 'User'))
+                    . "&background=DBEAFE&color=3B82F6&bold=true";
+            }
 
             return [
                 'id' => (string) $row->id,
                 'name' => (string) $row->full_name,
                 'role' => $this->resolveRoleName((string) $row->position_title, (string) $row->unit_name),
                 'email' => (string) $row->email,
-                'status' => $this->resolveStatus((int) $row->status, $row->last_login_at, $totalTasks, $overdueTasks),
+                'status' => (string) $row->resolved_status,
                 'tasks' => $totalTasks,
                 'performance' => $performance,
                 'unitName' => (string) ($row->unit_name ?? ''),
-                'avatarUrl' => $row->avatar_url
-                    ? (str_starts_with((string) $row->avatar_url, 'http')
-                        ? (string) $row->avatar_url
-                        : (str_starts_with((string) $row->avatar_url, 'avatars/')
-                            ? Cloudinary::getUrl((string) $row->avatar_url)
-                            : rtrim((string) config('app.url'), '/') . '/storage/' . (string) $row->avatar_url))
-                    : "https://ui-avatars.com/api/?name=" . urlencode((string) ($row->full_name ?? 'User'))
-                        . "&background=DBEAFE&color=3B82F6&bold=true",
+                'avatarUrl' => $avatarUrl,
             ];
         })->values()->all();
 
         $activities = $this->resolveActivities($unitId);
-        $summary = $this->resolveSummary($allRows);
 
         return [
             'members' => $members,
             'activities' => $activities,
-            'summary' => array_merge($summary, ['totalMembers' => $total]),
+            'summary' => [
+                'inOffice' => $inOfficeCount,
+                'onField' => $onFieldCount,
+                'onLeave' => $onLeaveCount,
+                'totalMembers' => $total,
+            ],
             'meta' => [
                 'page' => $page,
                 'pageSize' => $pageSize,
@@ -402,24 +439,5 @@ final class TeamRepository implements TeamRepositoryInterface
         $days = intdiv($hours, 24);
 
         return $days . ' ngày trước';
-    }
-
-    /**
-     * Aggregate member statuses into a summary counts object.
-     *
-     * @param \Illuminate\Support\Collection<int, mixed> $rows
-     * @return array
-     */
-    private function resolveSummary($rows): array
-    {
-        $members = $rows->map(function (object $row): string {
-            return $this->resolveStatus((int) $row->status, $row->last_login_at, (int) $row->total_tasks, (int) $row->overdue_tasks);
-        })->all();
-
-        return [
-            'inOffice' => count(array_filter($members, static fn (string $status): bool => $status === 'In Office')),
-            'onField' => count(array_filter($members, static fn (string $status): bool => $status === 'On Field')),
-            'onLeave' => count(array_filter($members, static fn (string $status): bool => $status === 'On Leave')),
-        ];
     }
 }

@@ -54,7 +54,7 @@ final class EventController extends Controller
             return $this->errorResponse($result['message'], 'FETCH_FAILED', HttpStatus::BAD_REQUEST);
         }
 
-        return $this->successResponse($result['data'], $result['message'], HttpStatus::OK, $result['data']['meta'] ?? null);
+        return $this->successResponse($result['data'], $result['message']);
     }
 
     /**
