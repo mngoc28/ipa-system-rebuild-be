@@ -33,23 +33,21 @@ final class AuthApiTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'status',
-                'data' => [
-                    'accessToken',
-                    'refreshToken',
-                    'expiresIn',
-                    'user' => [
-                        'id',
-                        'username',
-                        'email',
-                        'full_name',
-                    ]
+                'accessToken',
+                'refreshToken',
+                'expiresIn',
+                'user' => [
+                    'id',
+                    'username',
+                    'email',
+                    'full_name',
                 ],
                 'message'
             ])
             ->assertJsonPath('status', 'success');
         
-        $this->assertNotEmpty($response->json('data.accessToken'));
-        $this->assertEquals($user->username, $response->json('data.user.username'));
+        $this->assertNotEmpty($response->json('accessToken'));
+        $this->assertEquals($user->username, $response->json('user.username'));
     }
 
     /**
@@ -70,7 +68,7 @@ final class AuthApiTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-        $this->assertNotEmpty($response->json('data.accessToken'));
+        $this->assertNotEmpty($response->json('accessToken'));
     }
 
     /**
@@ -104,7 +102,7 @@ final class AuthApiTest extends TestCase
         ])->getJson('/api/v1/auth/me');
 
         $response->assertStatus(200)
-            ->assertJsonPath('data.username', $user->username);
+            ->assertJsonPath('username', $user->username);
     }
 
     /**
@@ -146,7 +144,7 @@ final class AuthApiTest extends TestCase
             'password' => $password,
         ]);
 
-        $refreshToken = $loginResponse->json('data.refreshToken');
+        $refreshToken = $loginResponse->json('refreshToken');
 
         // Call refresh endpoint
         $refreshResponse = $this->postJson('/api/v1/auth/refresh', [
@@ -156,14 +154,12 @@ final class AuthApiTest extends TestCase
         $refreshResponse->assertStatus(200)
             ->assertJsonStructure([
                 'status',
-                'data' => [
-                    'accessToken',
-                    'expiresIn',
-                ]
+                'accessToken',
+                'expiresIn',
             ])
             ->assertJsonPath('status', 'success');
         
-        $this->assertNotEmpty($refreshResponse->json('data.accessToken'));
-        $this->assertNotEquals($loginResponse->json('data.accessToken'), $refreshResponse->json('data.accessToken'));
+        $this->assertNotEmpty($refreshResponse->json('accessToken'));
+        $this->assertNotEquals($loginResponse->json('accessToken'), $refreshResponse->json('accessToken'));
     }
 }

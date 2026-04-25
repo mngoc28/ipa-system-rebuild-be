@@ -101,7 +101,7 @@ final class AdminUserDeleteApiTest extends TestCase
             ->assertJson([
                 'success' => true,
             ])
-            ->assertJsonPath('data.deleted', true);
+            ->assertJsonPath('deleted', true);
 
         $this->assertDatabaseMissing('ipa_user', [
             'id' => $userId,

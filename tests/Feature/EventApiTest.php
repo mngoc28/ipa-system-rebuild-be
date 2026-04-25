@@ -87,7 +87,7 @@ final class EventApiTest extends TestCase
         ])->getJson("/api/v1/staff/events/{$event->id}");
 
         $response->assertStatus(200)
-            ->assertJsonPath('data.event.event.id', (string) $event->id);
+            ->assertJsonPath('event.event.id', (string) $event->id);
     }
 
     /**
