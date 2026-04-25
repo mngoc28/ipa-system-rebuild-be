@@ -119,7 +119,14 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         }
 
         if ($delegationId !== '') {
-            $query->where('event.delegation_id', is_numeric($delegationId) ? (int) $delegationId : $delegationId);
+            if (is_numeric($delegationId)) {
+                $query->where('event.delegation_id', (int) $delegationId);
+            } else {
+                $resolvedDelegationId = DB::table('ipa_delegation')
+                    ->where('name', $delegationId)
+                    ->value('id');
+                $query->where('event.delegation_id', $resolvedDelegationId ?? -1);
+            }
         }
 
         if ($organizerId !== '' && is_numeric($organizerId)) {
@@ -127,8 +134,15 @@ final class EventRepository extends BaseRepository implements EventRepositoryInt
         }
 
         if ($unitId !== '') {
-            $query->join('ipa_user as u', 'event.organizer_user_id', '=', 'u.id')
-                ->where('u.primary_unit_id', is_numeric($unitId) ? (int) $unitId : $unitId);
+            $query->join('ipa_user as u', 'event.organizer_user_id', '=', 'u.id');
+            if (is_numeric($unitId)) {
+                $query->where('u.primary_unit_id', (int) $unitId);
+            } else {
+                $resolvedUnitId = DB::table('ipa_org_unit')
+                    ->where('unit_name', $unitId)
+                    ->value('id');
+                $query->where('u.primary_unit_id', $resolvedUnitId ?? -1);
+            }
         }
 
         if ($from !== '') {

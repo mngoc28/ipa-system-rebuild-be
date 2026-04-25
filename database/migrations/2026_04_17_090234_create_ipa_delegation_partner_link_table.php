@@ -14,9 +14,11 @@ return new class extends Migration
     public function up(): void
     {
         // Drop the old single partner_id column
-        Schema::table('ipa_delegation', function (Blueprint $table): void {
-            $table->dropColumn('partner_id');
-        });
+        if (DB::getDriverName() !== 'sqlite') {
+            Schema::table('ipa_delegation', function (Blueprint $table): void {
+                $table->dropColumn('partner_id');
+            });
+        }
 
         // Create pivot table
         Schema::create('ipa_delegation_partner_link', function (Blueprint $table): void {

@@ -16,7 +16,7 @@ return new class extends Migration
         // Add fields to ipa_delegation
         Schema::table('ipa_delegation', function (Blueprint $table) {
             if (!Schema::hasColumn('ipa_delegation', 'investment_potential')) {
-                $table->decimal('investment_potential', 15, 2)->nullable()->after('description');
+                $table->decimal('investment_potential', 15, 2)->nullable();
             }
         });
 

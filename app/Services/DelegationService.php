@@ -143,6 +143,10 @@ class DelegationService
     protected function notifyManagersOfSubmission(Delegation $delegation): void
     {
         try {
+            if (!$delegation->relationLoaded('owner')) {
+                $delegation->load('owner');
+            }
+
             // Managers manage staff within their unit, so we notify managers of the owner's unit.
             $unitId = $delegation->owner ? (int)$delegation->owner->primary_unit_id : (int)$delegation->host_unit_id;
 

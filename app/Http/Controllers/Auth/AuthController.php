@@ -63,7 +63,7 @@ final class AuthController extends Controller
         DB::table('ipa_auth_session')->insert([
             'user_id' => $user->id,
             'access_token_jti' => Str::random(40),
-            'refresh_token_hash' => Hash::make($refreshToken),
+            'refresh_token_hash' => hash('sha256', $refreshToken),
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
             'issued_at' => now(),
@@ -153,11 +153,11 @@ final class AuthController extends Controller
             $refreshToken = (string) $request->input('refreshToken');
 
             $session = DB::table('ipa_auth_session')
+                ->where('refresh_token_hash', hash('sha256', $refreshToken))
                 ->whereNull('revoked_at')
                 ->where('expires_at', '>', now())
                 ->orderByDesc('id')
-                ->get()
-                ->first(static fn (object $row): bool => Hash::check($refreshToken, (string) $row->refresh_token_hash));
+                ->first();
 
             if ($session === null) {
                 return $this->errorResponse(__('auth.refresh_error'), 'REFRESH_TOKEN_INVALID', HttpStatus::UNAUTHORIZED);

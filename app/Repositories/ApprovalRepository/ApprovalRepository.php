@@ -56,9 +56,34 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
             $keyword = $request->string('keyword')->toString();
             $query->where(function ($builder) use ($keyword): void {
                 $builder->where('request_type', 'like', '%' . $keyword . '%')
-                    ->orWhere('ref_table', 'like', '%' . $keyword . '%')
-                    ->orWhereRaw('CAST(ref_id AS CHAR) like ?', ['%' . $keyword . '%']);
+                    ->orWhere('ref_table', 'like', '%' . $keyword . '%');
+
+                if (ctype_digit($keyword)) {
+                    $builder->orWhere('ref_id', (int) $keyword);
+                }
             });
+        }
+
+        // --- Role-based Scoping ---
+        $user = auth()->user();
+        if ($user) {
+            $isStaff   = $user->hasRole('STAFF') && !$user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']);
+            $isManager = $user->hasRole('MANAGER') && !$user->hasRole(['ADMIN', 'DIRECTOR']);
+
+            if ($isStaff) {
+                $query->where('requester_user_id', $user->id);
+            } elseif ($isManager) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('requester_user_id', $user->id)
+                      ->orWhereExists(function ($sub) use ($user) {
+                          $sub->select(DB::raw(1))
+                              ->from('ipa_approval_step as step')
+                              ->whereColumn('step.approval_request_id', 'ipa_approval_request.id')
+                              ->where('step.approver_user_id', $user->id)
+                              ->whereColumn('step.step_order', 'ipa_approval_request.current_step');
+                      });
+                });
+            }
         }
 
         $paginator = $query->orderByDesc('created_at')->paginate(

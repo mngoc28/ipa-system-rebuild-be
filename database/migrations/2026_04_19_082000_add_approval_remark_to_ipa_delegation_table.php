@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::table('ipa_delegation', function (Blueprint $table) {
             if (!Schema::hasColumn('ipa_delegation', 'approval_remark')) {
-                $table->text('approval_remark')->nullable()->after('description');
+                $table->text('approval_remark')->nullable();
             }
         });
     }

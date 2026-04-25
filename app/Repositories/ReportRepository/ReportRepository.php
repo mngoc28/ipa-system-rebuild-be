@@ -72,6 +72,7 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
 
         $recentRunsQuery = DB::table('ipa_report_run as run')
             ->join('ipa_report_definition as definition', 'definition.id', '=', 'run.report_definition_id')
+            ->leftJoin('ipa_user as runner', 'runner.id', '=', 'run.run_by')
             ->leftJoin('ipa_file as file', 'file.id', '=', 'run.output_file_id')
             ->select([
                 'run.id',
@@ -92,12 +93,7 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
             if ($isStaff) {
                 $recentRunsQuery->where('run.run_by', $user->id);
             } elseif ($isManager) {
-                $recentRunsQuery->whereExists(function ($sub) use ($user) {
-                    $sub->select(DB::raw(1))
-                        ->from('ipa_user as u')
-                        ->whereColumn('u.id', 'run.run_by')
-                        ->where('u.primary_unit_id', $user->primary_unit_id);
-                });
+                $recentRunsQuery->where('runner.primary_unit_id', $user->primary_unit_id);
             }
         }
 
@@ -121,23 +117,26 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
             })
             ->all();
 
-        $runCountQuery = DB::table('ipa_report_run as run');
+        // Consolidate counts into a single query
+        $countsQuery = DB::table('ipa_report_run as run')
+            ->leftJoin('ipa_user as runner', 'runner.id', '=', 'run.run_by');
+
         if ($user) {
             if ($isStaff) {
-                $runCountQuery->where('run.run_by', $user->id);
+                $countsQuery->where('run.run_by', $user->id);
             } elseif ($isManager) {
-                $runCountQuery->whereExists(function ($sub) use ($user) {
-                    $sub->select(DB::raw(1))
-                        ->from('ipa_user as u')
-                        ->whereColumn('u.id', 'run.run_by')
-                        ->where('u.primary_unit_id', $user->primary_unit_id);
-                });
+                $countsQuery->where('runner.primary_unit_id', $user->primary_unit_id);
             }
         }
 
+        $counts = $countsQuery->selectRaw('
+            COUNT(*) as total_runs,
+            SUM(CASE WHEN run.status = 1 THEN 1 ELSE 0 END) as successful_runs
+        ')->first();
+
         $definitionCount = (int) DB::table('ipa_report_definition')->count();
-        $runCount = (int) (clone $runCountQuery)->count();
-        $successfulRunCount = (int) (clone $runCountQuery)->where('status', 1)->count();
+        $runCount = (int) ($counts->total_runs ?? 0);
+        $successfulRunCount = (int) ($counts->successful_runs ?? 0);
 
         $newProjects = $metricValues['CITY_NEW_PROJECTS_Q1_2026'] ?? 0.0;
         $fdiTotal = $metricValues['CITY_FDI_TOTAL_2026'] ?? 0.0;
@@ -339,31 +338,33 @@ final class ReportRepository extends BaseRepository implements ReportRepositoryI
      */
     private function resolveMetricValues(): array
     {
-        $codes = [
-            'CITY_NEW_PROJECTS_Q1_2026',
-            'CITY_FDI_TOTAL_2026',
-            'CITY_DOMESTIC_CAPITAL_2026',
-            'CITY_PCI_SATISFACTION_2026',
-        ];
+        return \Illuminate\Support\Facades\Cache::remember('ipa_kpi_metric_values', 3600, function () {
+            $codes = [
+                'CITY_NEW_PROJECTS_Q1_2026',
+                'CITY_FDI_TOTAL_2026',
+                'CITY_DOMESTIC_CAPITAL_2026',
+                'CITY_PCI_SATISFACTION_2026',
+            ];
 
-        $rows = DB::table('ipa_kpi_metric as metric')
-            ->join('ipa_kpi_snapshot as snapshot', 'snapshot.metric_id', '=', 'metric.id')
-            ->select([
-                DB::raw('DISTINCT ON (metric.metric_code) metric.metric_code'),
-                'snapshot.value_numeric',
-            ])
-            ->whereIn('metric.metric_code', $codes)
-            ->orderBy('metric.metric_code')
-            ->orderByDesc('snapshot.snapshot_date')
-            ->orderByDesc('snapshot.id')
-            ->get();
+            $rows = DB::table('ipa_kpi_metric as metric')
+                ->join('ipa_kpi_snapshot as snapshot', 'snapshot.metric_id', '=', 'metric.id')
+                ->select([
+                    DB::raw('DISTINCT ON (metric.metric_code) metric.metric_code'),
+                    'snapshot.value_numeric',
+                ])
+                ->whereIn('metric.metric_code', $codes)
+                ->orderBy('metric.metric_code')
+                ->orderByDesc('snapshot.snapshot_date')
+                ->orderByDesc('snapshot.id')
+                ->get();
 
-        $values = [];
-        foreach ($rows as $row) {
-            $values[(string) $row->metric_code] = (float) $row->value_numeric;
-        }
+            $values = [];
+            foreach ($rows as $row) {
+                $values[(string) $row->metric_code] = (float) $row->value_numeric;
+            }
 
-        return $values;
+            return $values;
+        });
     }
 
     /**

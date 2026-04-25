@@ -11,7 +11,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('ipa_delegation', function (Blueprint $table): void {
-            $table->bigIncrements('id');
+            $table->id();
             $table->string('code');
             $table->string('name');
             $table->smallInteger('direction')->default(1);
