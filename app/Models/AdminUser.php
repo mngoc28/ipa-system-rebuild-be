@@ -7,7 +7,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 /**
  * Class AdminUser
@@ -126,7 +125,8 @@ final class AdminUser extends Authenticatable implements JWTSubject
         }
 
         if (str_starts_with($value, 'avatars/')) {
-            return Cloudinary::getUrl($value);
+            $cloudName = config('cloudinary.cloud_name');
+            return "https://res.cloudinary.com/{$cloudName}/image/upload/{$value}";
         }
 
         return rtrim((string) config('app.url'), '/') . '/storage/' . $value;

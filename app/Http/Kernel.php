@@ -42,6 +42,7 @@ class Kernel extends HttpKernel
             "bindings",
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \App\Http\Middleware\AuditLogMiddleware::class,
             // 'throttle:api',
             // \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],

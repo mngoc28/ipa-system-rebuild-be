@@ -27,14 +27,14 @@ trait ApiResponser
             "message" => $message,
         ];
 
-        if (is_array($data) && (isset($data['items']) || isset($data['meta']))) {
-            $payload = array_merge($payload, $data);
+        if (is_array($data)) {
+            $payload = array_merge($data, $payload);
         } else {
             $payload["data"] = $data;
         }
 
         if ($meta !== null) {
-            $payload["meta"] = $meta;
+            $payload["meta"] = array_merge($payload["meta"] ?? [], (array) $meta);
         }
 
         return response()->json($payload, $code->value);
@@ -61,14 +61,14 @@ trait ApiResponser
             "message" => $message,
         ];
 
-        if (is_array($data) && (isset($data['items']) || isset($data['meta']))) {
-            $payload = array_merge($payload, $data);
+        if (is_array($data)) {
+            $payload = array_merge($data, $payload);
         } else {
             $payload["data"] = $data;
         }
 
         if ($meta !== null) {
-            $payload["meta"] = $meta;
+            $payload["meta"] = array_merge($payload["meta"] ?? [], (array) $meta);
         }
 
         return response()->json($payload, $code->value);

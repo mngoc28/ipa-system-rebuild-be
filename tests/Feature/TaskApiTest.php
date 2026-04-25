@@ -45,11 +45,7 @@ final class TaskApiTest extends TestCase
             ->assertJsonPath('status', 'success');
         
         // Check if items are in root (flattened) or in data
-        if (isset($response->json()['items'])) {
-            $response->assertJsonCount(3, 'items');
-        } else {
-            $response->assertJsonCount(3, 'data.items');
-        }
+        $response->assertJsonCount(3, 'items');
     }
 
     /**
