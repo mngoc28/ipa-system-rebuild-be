@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\Admin\IntegrationController as AdminIntegrationController;
 use App\Http\Controllers\Admin\MaintenanceController as AdminMaintenanceController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Dashboard\DashboardController;
@@ -13,7 +12,7 @@ use App\Http\Controllers\Event\EventController;
 use App\Http\Controllers\Pipeline\PipelineController;
 use App\Http\Controllers\Report\ReportController;
 use App\Http\Controllers\Notification\NotificationController;
-use App\Http\Controllers\Admin\SystemSettingController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Partner\PartnerController;
 use App\Http\Controllers\Task\TaskController;
 use App\Http\Controllers\Delegation\DelegationController;
@@ -200,14 +199,10 @@ Route::prefix('v1')->group(function (): void {
     // --- ADMIN CLUSTER ---
     Route::middleware(['jwt.auth', 'role:ADMIN'])->prefix('admin')->group(function () use ($sharedModuleRoutes): void {
         Route::prefix('system-settings')->group(function (): void {
-            Route::get('', [SystemSettingController::class, 'index']);
-            Route::patch('', [SystemSettingController::class, 'update']);
-            Route::get('stats', [SystemSettingController::class, 'getOperationalStats']);
+            Route::get('stats', [AdminDashboardController::class, 'getOperationalStats']);
         });
 
         Route::apiResource('announcements', AnnouncementController::class)->only(['index', 'store', 'update', 'destroy']);
-
-        Route::post('integrations/{provider}/test', [AdminIntegrationController::class, 'test']);
 
         Route::prefix('maintenance')->group(function (): void {
             Route::post('cache-clear', [AdminMaintenanceController::class, 'clearCache']);

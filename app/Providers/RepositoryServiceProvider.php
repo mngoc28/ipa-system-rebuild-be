@@ -26,8 +26,6 @@ use App\Repositories\DocumentRepository\DocumentRepository;
 use App\Repositories\DocumentRepository\DocumentRepositoryInterface;
 use App\Repositories\TeamRepository\TeamRepository;
 use App\Repositories\TeamRepository\TeamRepositoryInterface;
-use App\Repositories\SystemSettingRepository\SystemSettingRepository;
-use App\Repositories\SystemSettingRepository\SystemSettingRepositoryInterface;
 use Illuminate\Support\ServiceProvider;
 
 final class RepositoryServiceProvider extends ServiceProvider
@@ -40,7 +38,6 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->app->singleton(PipelineRepositoryInterface::class, PipelineRepository::class);
         $this->app->singleton(ReportRepositoryInterface::class, ReportRepository::class);
         $this->app->singleton(NotificationRepositoryInterface::class, NotificationRepository::class);
-        $this->app->singleton(SystemSettingRepositoryInterface::class, SystemSettingRepository::class);
         $this->app->singleton(ApprovalRepositoryInterface::class, ApprovalRepository::class);
         $this->app->singleton(DocumentRepositoryInterface::class, DocumentRepository::class);
         $this->app->singleton(TeamRepositoryInterface::class, TeamRepository::class);

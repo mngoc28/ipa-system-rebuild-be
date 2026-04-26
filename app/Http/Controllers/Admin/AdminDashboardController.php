@@ -4,92 +4,26 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\HttpStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Validations\SystemSettingValidation;
-use App\Services\SystemSettingService;
-use App\Models\SystemSetting;
 use App\Models\File;
 use App\Models\Task;
 use App\Models\Announcement;
 use App\Models\AuditLog;
-use App\Models\User;
+use App\Models\AdminUser;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
 
 /**
- * Class SystemSettingController
+ * Class AdminDashboardController
  *
- * Manages global system configurations and provides operational
- * health statistics for the administration dashboard.
+ * Provides operational health statistics for the administration dashboard.
  *
  * @package App\Http\Controllers\Admin
  */
-final class SystemSettingController extends Controller
+final class AdminDashboardController extends Controller
 {
-    /**
-     * SystemSettingController constructor.
-     *
-     * @param SystemSettingService $systemSettingService
-     * @param SystemSettingValidation $systemSettingValidation
-     */
-    public function __construct(
-        private SystemSettingService $systemSettingService,
-        private SystemSettingValidation $systemSettingValidation,
-    ) {
-    }
-
-    /**
-     * List all system settings with filtering (By category).
-     *
-     * @param Request $request
-     * @return JsonResponse
-     */
-    public function index(Request $request): JsonResponse
-    {
-        $validator = $this->systemSettingValidation->indexValidation($request);
-
-        if ($validator->fails()) {
-            return $this->validateError($validator->errors(), 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
-        }
-
-        $result = $this->systemSettingService->getAll($request);
-
-        if (! $result['success']) {
-            return $this->errorResponse($result['message'], 'FETCH_FAILED', HttpStatus::BAD_REQUEST);
-        }
-
-        return $this->successResponse($result['data'], $result['message']);
-    }
-
-    /**
-     * Batch update system setting values.
-     *
-     * @param Request $request Contains 'items' array of key-value pairs.
-     * @return JsonResponse
-     */
-    public function update(Request $request): JsonResponse
-    {
-        $validator = $this->systemSettingValidation->updateValidation($request);
-
-        if ($validator->fails()) {
-            return $this->validateError($validator->errors(), 'VALIDATION_FAILED', HttpStatus::VALIDATION_ERROR);
-        }
-
-        $payload = $request->input('items', []);
-        $updatedBy = $request->user()?->id;
-
-        $result = $this->systemSettingService->update($payload, is_numeric($updatedBy) ? (int) $updatedBy : null);
-
-        if (! $result['success']) {
-            return $this->errorResponse($result['message'], 'UPDATE_FAILED', HttpStatus::BAD_REQUEST);
-        }
-
-        return $this->successResponse($result['data'], $result['message']);
-    }
-
     /**
      * Get operational statistics for the Admin dashboard.
      * Aggregates data on online users, storage usage, CPU load, and system health.
@@ -129,7 +63,7 @@ final class SystemSettingController extends Controller
             ->count();
 
         // 6. Total Users
-        $totalUsers = User::count();
+        $totalUsers = AdminUser::count();
 
         // 7. Simulated CPU Load (between 5-15% for normal operation)
         $cpuLoad = rand(5, 15);
