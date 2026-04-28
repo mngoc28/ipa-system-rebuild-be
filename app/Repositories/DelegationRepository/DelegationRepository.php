@@ -306,17 +306,22 @@ class DelegationRepository implements DelegationRepositoryInterface
         $data['participant_count'] = count($membersData);
 
         $delegation = $this->model->create($data);
+        $now = now();
 
         if ($membersData !== []) {
             $membersToCreate = [];
             foreach ($membersData as $member) {
                 if (is_string($member) && trim($member) !== '') {
                     $membersToCreate[] = [
+                        'delegation_id' => $delegation->id,
                         'full_name' => trim($member),
                         'member_type' => 0,
+                        'created_at' => $now,
+                        'updated_at' => $now,
                     ];
                 } elseif (is_array($member) && !empty($member['fullName'])) {
                     $membersToCreate[] = [
+                        'delegation_id' => $delegation->id,
                         'full_name' => trim($member['fullName']),
                         'title' => $member['role'] ?? null,
                         'organization_name' => $member['organizationName'] ?? null,
@@ -324,17 +329,20 @@ class DelegationRepository implements DelegationRepositoryInterface
                         'identity_number' => $member['identityNumber'] ?? null,
                         'is_vip' => (bool) ($member['isVip'] ?? false),
                         'member_type' => 0,
+                        'created_at' => $now,
+                        'updated_at' => $now,
                     ];
                 }
             }
 
             if ($membersToCreate !== []) {
-                $delegation->members()->createMany($membersToCreate);
+                DB::table('ipa_delegation_member')->insert($membersToCreate);
             }
         }
 
         if ($scheduleItems !== []) {
             $events = array_map(static fn (array $scheduleItem) => [
+                'delegation_id' => $delegation->id,
                 'title' => trim((string) $scheduleItem['title']),
                 'description' => isset($scheduleItem['note']) ? trim((string) $scheduleItem['note']) : null,
                 'event_type' => 1,
@@ -345,9 +353,11 @@ class DelegationRepository implements DelegationRepositoryInterface
                 'staff_id' => $scheduleItem['staff_id'] ?? null,
                 'logistics_note' => $scheduleItem['logistics_note'] ?? null,
                 'organizer_user_id' => (int) $delegation->owner_user_id,
+                'created_at' => $now,
+                'updated_at' => $now,
             ], $scheduleItems);
 
-            $delegation->events()->createMany($events);
+            DB::table('ipa_event')->insert($events);
         }
 
         if ($partnerIds !== []) {
@@ -359,11 +369,15 @@ class DelegationRepository implements DelegationRepositoryInterface
         }
 
         if ($checklistItems !== []) {
-            $delegation->checklist()->createMany(array_map(fn($item) => [
+            $checklistData = array_map(fn($item) => [
+                'delegation_id' => $delegation->id,
                 'item_name' => $item['itemName'] ?? '',
                 'assignee_user_id' => $item['assigneeId'] ?? null,
                 'status' => $item['status'] ?? 0,
-            ], $checklistItems));
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], $checklistItems);
+            DB::table('ipa_delegation_checklist')->insert($checklistData);
         }
 
         // Outcomes
@@ -377,13 +391,17 @@ class DelegationRepository implements DelegationRepositoryInterface
         }
 
         // Contacts
-        if (array_key_exists('contacts', $data)) {
-            $delegation->contacts()->createMany(array_map(fn($c) => [
+        if (isset($data['contacts']) && is_array($data['contacts'])) {
+            $contactsData = array_map(fn($c) => [
+                'delegation_id' => $delegation->id,
                 'name' => $c['contact_name'] ?? '',
                 'role_name' => $c['contact_job'] ?? '',
                 'email' => $c['contact_email'] ?? '',
                 'phone' => $c['contact_phone'] ?? '',
-            ], $data['contacts']));
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], $data['contacts']);
+            DB::table('ipa_delegation_contact')->insert($contactsData);
         }
 
         return $delegation->load([

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Repositories\DelegationRepository\DelegationRepositoryInterface;
 use App\Repositories\AdminUserRepository\AdminUserRepositoryInterface;
 use App\Services\NotificationService;
+use App\Jobs\NotifyManagersOfSubmission;
 use App\Models\Delegation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -88,7 +89,7 @@ class DelegationService
                 /** @var Delegation|null $delegation */
                 $delegation = $this->repository->create($data);
                 if ($delegation && (int)$delegation->status === 1) {
-                    $this->notifyManagersOfSubmission($delegation);
+                    NotifyManagersOfSubmission::dispatch($delegation->id);
                 }
                 return $delegation;
             });
@@ -120,7 +121,7 @@ class DelegationService
                 if ($delegation) {
                     $newStatus = (int)$delegation->status;
                     if ($newStatus === 1 && $oldStatus !== 1) {
-                        $this->notifyManagersOfSubmission($delegation);
+                        NotifyManagersOfSubmission::dispatch($delegation->id);
                     } elseif ($oldStatus === 1 && in_array($newStatus, [3, 6, 2])) {
                         $this->notifyStaffOfDecision($delegation, $newStatus);
                     }
@@ -134,37 +135,6 @@ class DelegationService
         }
     }
 
-    /**
-     * Notify unit managers when a new delegation is submitted.
-     *
-     * @param Delegation $delegation
-     * @return void
-     */
-    protected function notifyManagersOfSubmission(Delegation $delegation): void
-    {
-        try {
-            if (!$delegation->relationLoaded('owner')) {
-                $delegation->load('owner');
-            }
-
-            // Managers manage staff within their unit, so we notify managers of the owner's unit.
-            $unitId = $delegation->owner ? (int)$delegation->owner->primary_unit_id : (int)$delegation->host_unit_id;
-
-            $managerIds = $this->userRepository->getIdsByRoleAndUnit('MANAGER', $unitId);
-            if (!empty($managerIds)) {
-                $this->notificationService->notify([
-                    'notification_type_id' => 2, // approval
-                    'title' => 'Hồ sơ đoàn mới chờ duyệt',
-                    'body' => "Có hồ sơ đoàn mới \"{$delegation->name}\" cần bạn phê duyệt.",
-                    'ref_table' => 'ipa_delegation',
-                    'ref_id' => $delegation->id,
-                    'severity' => 1,
-                ], $managerIds);
-            }
-        } catch (\Exception $e) {
-            Log::error('DelegationService::notifyManagersOfSubmission: ' . $e->getMessage());
-        }
-    }
 
     /**
      * Notify the delegation owner of approval/rejection/request-for-change decisions.

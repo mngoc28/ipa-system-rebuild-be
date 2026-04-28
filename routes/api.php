@@ -25,6 +25,7 @@ use App\Http\Controllers\Profile\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
+    // --- Public & Health Check Endpoints ---
     Route::get('/health', function () {
         return response()->json([
             'status' => 'ok',
@@ -58,10 +59,12 @@ Route::prefix('v1')->group(function (): void {
         }
     });
 
+    // --- Authentication Module ---
     Route::prefix('auth')->group(function (): void {
 
         Route::post('login', [AuthController::class, 'login']);
         Route::get('me', [AuthController::class, 'me'])->middleware('jwt.auth');
+        Route::get('init', [AuthController::class, 'init'])->middleware('jwt.auth');
         Route::post('logout', [AuthController::class, 'logout'])->middleware('jwt.auth');
         Route::post('refresh', [AuthController::class, 'refresh']);
     });
@@ -73,8 +76,12 @@ Route::prefix('v1')->group(function (): void {
         Route::post('avatar', [ProfileController::class, 'updateAvatar']);
     });
 
-    // Helper closure for common modules accessible by all roles (with their own prefixes)
+    /**
+     * Shared Module Routes
+     * These routes are used across Admin, Director, Manager, and Staff clusters.
+     */
     $sharedModuleRoutes = function () {
+        // User Management (Common Index/Show)
         Route::prefix('users')->group(function (): void {
             Route::get('', [AdminUserController::class, 'index']);
             Route::get('roles', [AdminUserController::class, 'roles']);
@@ -88,6 +95,7 @@ Route::prefix('v1')->group(function (): void {
             Route::post('{userId}/avatar', [AdminUserController::class, 'updateAvatar'])->middleware('role:ADMIN');
         });
 
+        // Master Data Management (Countries, Sectors, etc.)
         Route::prefix('master-data')->group(function (): void {
             Route::get('{domain}', [MasterDataController::class, 'index']);
             Route::get('{domain}/{id}', [MasterDataController::class, 'show']);
@@ -96,6 +104,7 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('{domain}/{id}', [MasterDataController::class, 'destroy'])->middleware('role:ADMIN');
         });
 
+        // Tasks and Collaboration
         Route::prefix('tasks')->group(function (): void {
             Route::get('', [TaskController::class, 'index']);
             Route::get('{id}', [TaskController::class, 'show']);
@@ -111,6 +120,7 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('{taskId}/attachments/{attachmentId}', [TaskController::class, 'deleteAttachment']);
         });
 
+        // Working Delegations (Đoàn công tác)
         Route::prefix('delegations')->group(function (): void {
             Route::get('', [DelegationController::class, 'index']);
             Route::get('{id}', [DelegationController::class, 'show']);
@@ -123,6 +133,7 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('{id}/comments/{commentId}', [DelegationController::class, 'deleteComment']);
         });
 
+        // Events and Calendar
         Route::prefix('events')->group(function (): void {
             Route::get('', [EventController::class, 'index']);
             Route::get('{id}', [EventController::class, 'show']);
@@ -133,6 +144,7 @@ Route::prefix('v1')->group(function (): void {
             Route::post('{id}/reschedule-requests', [EventController::class, 'requestReschedule']);
         });
 
+        // Partner and Contact Management
         Route::prefix('partners')->group(function (): void {
             Route::get('', [PartnerController::class, 'index']);
             Route::get('options', [PartnerController::class, 'options']);
@@ -144,6 +156,7 @@ Route::prefix('v1')->group(function (): void {
             Route::post('{id}/interactions', [PartnerController::class, 'storeInteraction']);
         });
 
+        // Real-time Notifications
         Route::prefix('notifications')->group(function (): void {
             Route::get('', [NotificationController::class, 'index']);
             Route::get('count', [NotificationController::class, 'count']);
@@ -152,11 +165,13 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('read', [NotificationController::class, 'deleteRead']);
         });
 
+        // Document Folders
         Route::prefix('folders')->group(function (): void {
             Route::get('', [DocumentController::class, 'foldersIndex']);
             Route::post('', [DocumentController::class, 'foldersStore']);
         });
 
+        // File Management & Sharing
         Route::prefix('files')->group(function (): void {
             Route::get('', [DocumentController::class, 'filesIndex']);
             Route::get('{id}', [DocumentController::class, 'filesShow']);
@@ -166,6 +181,7 @@ Route::prefix('v1')->group(function (): void {
             Route::post('{id}/download-url', [DocumentController::class, 'filesDownloadUrl']);
         });
 
+        // Meeting Minutes
         Route::prefix('minutes')->group(function (): void {
             Route::get('', [MinutesController::class, 'index']);
             Route::get('{id}', [MinutesController::class, 'show']);
@@ -174,6 +190,7 @@ Route::prefix('v1')->group(function (): void {
             Route::post('{id}/comments', [MinutesController::class, 'createComment']);
         });
 
+        // Investment Pipeline & Project Tracking
         Route::prefix('pipeline')->group(function (): void {
             Route::get('summary', [PipelineController::class, 'summary']);
             Route::get('projects', [PipelineController::class, 'index']);
@@ -184,12 +201,14 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('projects/{id}/stage', [PipelineController::class, 'patchStage']);
         });
 
+        // Reporting and Statistics
         Route::prefix('reports')->group(function (): void {
             Route::get('summary', [ReportController::class, 'summary']);
         });
 
         Route::get('dashboard/summary', [DashboardController::class, 'summary']);
 
+        // Organizational Team Management
         Route::prefix('teams')->group(function (): void {
             Route::get('', [TeamController::class, 'index']);
             Route::get('units', [TeamController::class, 'units']);
@@ -198,6 +217,7 @@ Route::prefix('v1')->group(function (): void {
 
     // --- ADMIN CLUSTER ---
     Route::middleware(['jwt.auth', 'role:ADMIN'])->prefix('admin')->group(function () use ($sharedModuleRoutes): void {
+        // System Wide Operations
         Route::prefix('system-settings')->group(function (): void {
             Route::get('stats', [AdminDashboardController::class, 'getOperationalStats']);
         });
@@ -208,6 +228,7 @@ Route::prefix('v1')->group(function (): void {
             Route::post('cache-clear', [AdminMaintenanceController::class, 'clearCache']);
         });
 
+        // Security Auditing
         Route::prefix('audit-logs')->group(function (): void {
             Route::get('', [AuditLogController::class, 'index']);
         });
@@ -216,7 +237,9 @@ Route::prefix('v1')->group(function (): void {
     });
 
     // --- DIRECTOR CLUSTER ---
+    // Actions reserved for Director and Admin roles
     Route::middleware(['jwt.auth', 'role:ADMIN,DIRECTOR'])->prefix('director')->group(function () use ($sharedModuleRoutes): void {
+        // Director-specific Report Definitions and Runs
         Route::prefix('reports')->group(function (): void {
             Route::get('definitions', [ReportController::class, 'definitions']);
             Route::post('runs', [ReportController::class, 'store']);
@@ -227,7 +250,9 @@ Route::prefix('v1')->group(function (): void {
     });
 
     // --- MANAGER CLUSTER ---
+    // Actions reserved for Manager and higher roles
     Route::middleware(['jwt.auth', 'role:ADMIN,DIRECTOR,MANAGER'])->prefix('manager')->group(function () use ($sharedModuleRoutes): void {
+        // Manager-specific Team Management
         Route::prefix('teams')->group(function (): void {
             Route::post('members', [TeamController::class, 'storeMember']);
         });
@@ -238,6 +263,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('runs/{runId}', [ReportController::class, 'show']);
         });
 
+        // Workflow Approval Management
         Route::prefix('approvals')->group(function (): void {
             Route::get('', [ApprovalController::class, 'index']);
             Route::get('summary', [ApprovalController::class, 'summary']);
@@ -251,6 +277,7 @@ Route::prefix('v1')->group(function (): void {
     });
 
     // --- STAFF CLUSTER ---
+    // General actions available to all authenticated staff members
     Route::middleware(['jwt.auth', 'role:ADMIN,DIRECTOR,MANAGER,STAFF'])->prefix('staff')->group(function () use ($sharedModuleRoutes): void {
         Route::get('dashboard/tasks', [DashboardController::class, 'tasks']);
         $sharedModuleRoutes();
