@@ -404,19 +404,7 @@ class DelegationRepository implements DelegationRepositoryInterface
             DB::table('ipa_delegation_contact')->insert($contactsData);
         }
 
-        return $delegation->load([
-            'members',
-            'events.location',
-            'events.staff',
-            'country',
-            'partners',
-            'hostUnit',
-            'owner',
-            'sectors',
-            'checklist',
-            'contacts',
-            'outcomes',
-        ]);
+        return $delegation;
     }
 
     /**
@@ -521,19 +509,7 @@ class DelegationRepository implements DelegationRepositoryInterface
                 ], $data['contacts']));
             }
 
-            return $record->load([
-                'members',
-                'events.location',
-                'events.staff',
-                'country',
-                'partners',
-                'hostUnit',
-                'owner',
-                'sectors',
-                'checklist',
-                'contacts',
-                'outcomes',
-            ]);
+            return $record;
         }
         return null;
     }
