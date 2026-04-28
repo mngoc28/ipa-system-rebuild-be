@@ -207,7 +207,7 @@ class DelegationService
 
             $comments = $delegation->comments()->with('commenter:id,full_name,avatar_url')->orderBy('created_at', 'asc')->get();
 
-            return ['success' => true, 'data' => $comments];
+            return ['success' => true, 'data' => ['items' => $comments]];
         } catch (\Exception $e) {
             Log::error('Failed to list delegation comments: ' . $e->getMessage());
             return ['success' => false, 'message' => $e->getMessage()];

@@ -61,7 +61,7 @@ class DelegationController extends Controller
             );
         }
 
-        return $this->successResponse($delegation, 'Lấy thông tin đoàn công tác thành công.');
+        return $this->successResponse($delegation->toArray(), 'Lấy thông tin đoàn công tác thành công.');
     }
 
     /**
@@ -93,7 +93,7 @@ class DelegationController extends Controller
             $delegation = $this->service->createDelegation($data);
 
             return $this->createdResponse(
-                $delegation,
+                $delegation->toArray(),
                 'Tạo hồ sơ đoàn công tác thành công.'
             );
         } catch (\Exception $e) {
@@ -133,7 +133,7 @@ class DelegationController extends Controller
             }
 
             return $this->successResponse(
-                $delegation,
+                $delegation->toArray(),
                 'Cập nhật hồ sơ đoàn thành công.'
             );
         } catch (\Exception $e) {

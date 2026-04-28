@@ -43,7 +43,7 @@ final class PartnerApiTest extends TestCase
         ])->getJson('/api/v1/staff/partners');
 
         $response->assertStatus(200)
-            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('api_status', 'success')
             ->assertJsonStructure(['items', 'meta']);
     }
 
