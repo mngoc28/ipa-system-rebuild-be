@@ -42,7 +42,7 @@ final class UserApiTest extends TestCase
         ])->getJson('/api/v1/staff/users?pageSize=10');
 
         $response->assertStatus(200)
-            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('api_status', 'success')
             ->assertJsonStructure([
                 'items',
                 'meta'
@@ -70,7 +70,7 @@ final class UserApiTest extends TestCase
         ])->postJson('/api/v1/staff/users', $userData);
 
         $response->assertStatus(201)
-            ->assertJsonPath('status', 'success');
+            ->assertJsonPath('api_status', 'success');
 
         $this->assertDatabaseHas('ipa_user', ['username' => 'testuser_new']);
     }

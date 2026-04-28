@@ -23,12 +23,12 @@ trait ApiResponser
     ) {
         $payload = [
             "success" => true,
-            "status"  => "success",
+            "api_status" => "success",
             "message" => $message,
         ];
 
         if (is_array($data)) {
-            $payload = array_merge($data, $payload);
+            $payload = array_merge($payload, $data);
         } else {
             $payload["data"] = $data;
         }
@@ -57,12 +57,12 @@ trait ApiResponser
     ) {
         $payload = [
             "success" => true,
-            "status"  => "success",
+            "api_status" => "success",
             "message" => $message,
         ];
 
         if (is_array($data)) {
-            $payload = array_merge($data, $payload);
+            $payload = array_merge($payload, $data);
         } else {
             $payload["data"] = $data;
         }
@@ -90,12 +90,12 @@ trait ApiResponser
         $data = null
     ) {
         return response()->json([
-            "success" => false,
-            "status"  => "error",
-            "message" => $message,
-            "code"    => $err_code,
-            "data"    => $data,
-            "error"   => [
+            "success"    => false,
+            "api_status" => "error",
+            "message"    => $message,
+            "code"       => $err_code,
+            "data"       => $data,
+            "error"      => [
                 "code" => $err_code,
                 "message" => $message,
                 "details" => $data,
@@ -120,13 +120,13 @@ trait ApiResponser
         $data = null
     ) {
         return response()->json([
-            "success" => false,
-            "status" => "error",
-            "message" => __('auth.invalid_data'),
-            "errors" => $message,
-            "code"   => $err_code,
-            "data"   => $data,
-            "error"  => [
+            "success"    => false,
+            "api_status" => "error",
+            "message"    => __('auth.invalid_data'),
+            "errors"     => $message,
+            "code"       => $err_code,
+            "data"       => $data,
+            "error"      => [
                 "code" => $err_code,
                 "message" => __('auth.invalid_data'),
                 "details" => $message,
@@ -152,11 +152,11 @@ trait ApiResponser
     ) {
         return response()->json(
             [
-                "success" => false,
-                "status"  => "error",
-                "message" => $message,
-                "code"    => $err_code,
-                "data"    => $data,
+                "success"    => false,
+                "api_status" => "error",
+                "message"    => $message,
+                "code"       => $err_code,
+                "data"       => $data,
             ],
             $code->value
         );

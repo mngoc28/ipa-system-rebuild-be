@@ -42,7 +42,7 @@ final class TaskApiTest extends TestCase
         ])->getJson('/api/v1/staff/tasks');
 
         $response->assertStatus(200)
-            ->assertJsonPath('status', 'success');
+            ->assertJsonPath('api_status', 'success');
         
         // Check if items are in root (flattened) or in data
         $response->assertJsonCount(3, 'items');

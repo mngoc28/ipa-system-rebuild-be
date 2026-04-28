@@ -41,7 +41,7 @@ final class DelegationApiTest extends TestCase
         ])->getJson('/api/v1/staff/delegations');
 
         $response->assertStatus(200)
-            ->assertJsonPath('status', 'success');
+            ->assertJsonPath('api_status', 'success');
     }
 
     /**

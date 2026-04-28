@@ -32,7 +32,7 @@ final class AuthApiTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'status',
+                'api_status',
                 'accessToken',
                 'refreshToken',
                 'expiresIn',
@@ -44,7 +44,7 @@ final class AuthApiTest extends TestCase
                 ],
                 'message'
             ])
-            ->assertJsonPath('status', 'success');
+            ->assertJsonPath('api_status', 'success');
         
         $this->assertNotEmpty($response->json('accessToken'));
         $this->assertEquals($user->username, $response->json('user.username'));
@@ -156,11 +156,11 @@ final class AuthApiTest extends TestCase
 
         $refreshResponse->assertStatus(200)
             ->assertJsonStructure([
-                'status',
+                'api_status',
                 'accessToken',
                 'expiresIn',
             ])
-            ->assertJsonPath('status', 'success');
+            ->assertJsonPath('api_status', 'success');
         
         $this->assertNotEmpty($refreshResponse->json('accessToken'));
         $this->assertNotEquals($loginResponse->json('accessToken'), $refreshResponse->json('accessToken'));

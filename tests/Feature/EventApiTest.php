@@ -42,7 +42,7 @@ final class EventApiTest extends TestCase
         ])->getJson('/api/v1/staff/events');
 
         $response->assertStatus(200)
-            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('api_status', 'success')
             ->assertJsonCount(3, 'items');
     }
 
