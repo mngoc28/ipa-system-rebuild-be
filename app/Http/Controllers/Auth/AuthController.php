@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Models\AdminUser;
 use App\Enums\HttpStatus;
 use App\Http\Controllers\Controller;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,15 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  */
 final class AuthController extends Controller
 {
+    /**
+     * AuthController constructor.
+     *
+     * @param NotificationService $notificationService
+     */
+    public function __construct(
+        private NotificationService $notificationService,
+    ) {
+    }
     /**
      * Handle a login request to the application.
      *
@@ -101,6 +111,39 @@ final class AuthController extends Controller
             $userData,
             __('auth.login_success')
         );
+    }
+
+    /**
+     * Initialize application state with user profile and common counts.
+     * Consolidates multiple layout-level requests into one.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function init(Request $request): JsonResponse
+    {
+        $user = $request->user()->load(['roles', 'roles.permissions', 'unit']);
+        $userData = $user->toArray();
+        $userData['role_codes'] = $user->role_codes;
+        $userData['permission_codes'] = $user->permission_codes;
+
+        $userId = (int) $user->id;
+
+        // Fetch unread notifications count
+        $notifResult = $this->notificationService->getUnreadCount($userId);
+        $unreadCount = $notifResult['success'] ? ($notifResult['data']['unreadCount'] ?? 0) : 0;
+
+        // Fetch pending approvals count (if not staff)
+        $pendingApprovalsCount = 0;
+        if ($user->role !== 'Staff') {
+            $pendingApprovalsCount = \App\Models\ApprovalRequest::query()->whereIn('status', [0])->count();
+        }
+
+        return $this->successResponse([
+            'user' => $userData,
+            'unreadCount' => $unreadCount,
+            'pendingApprovalsCount' => $pendingApprovalsCount,
+        ], 'Application state initialized successfully');
     }
 
     /**
