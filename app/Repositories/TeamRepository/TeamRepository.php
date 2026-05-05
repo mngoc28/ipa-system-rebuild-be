@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\TeamRepository;
 
+use App\Models\AdminUser;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -40,6 +41,70 @@ final class TeamRepository implements TeamRepositoryInterface
     }
 
     /**
+     * Get a lightweight list of users for mention suggestions.
+     *
+     * @param Request $request
+     * @return array
+     */
+    public function getMentionMembers(Request $request): array
+    {
+        $unitId = $request->filled('unitId') ? (int) $request->input('unitId') : null;
+        $search = trim((string) $request->input('search', ''));
+        $pageSize = max(1, min(50, (int) $request->input('pageSize', 20)));
+
+        /** @var AdminUser|null $currentUser */
+        $currentUser = auth()->user();
+        if ($unitId === null && $currentUser && !$currentUser->hasRole(['ADMIN', 'DIRECTOR'])) {
+            $unitId = $currentUser->primary_unit_id;
+        }
+
+        $query = DB::table('ipa_user as u')
+            ->leftJoin('ipa_user_unit_assignment as ua', function ($join): void {
+                $join->on('ua.user_id', '=', 'u.id')
+                    ->where('ua.is_primary', '=', 1);
+            })
+            ->where('u.status', 1)
+            ->select([
+                'u.id',
+                'u.full_name',
+                'u.avatar_url',
+                'ua.position_title',
+                'u.primary_unit_id',
+            ]);
+
+        if ($unitId !== null) {
+            $query->where('u.primary_unit_id', $unitId);
+        }
+
+        if ($search !== '') {
+            $query->where('u.full_name', 'like', '%' . $search . '%');
+        }
+
+        $rows = $query
+            ->orderBy('u.full_name')
+            ->limit($pageSize)
+            ->get();
+
+        return [
+            'items' => $rows->map(static function (object $row): array {
+                $avatarUrl = null;
+                if (!empty($row->avatar_url)) {
+                    $rawAvatar = (string) $row->avatar_url;
+                    $avatarUrl = str_starts_with($rawAvatar, 'http')
+                        ? $rawAvatar
+                        : rtrim((string) config('app.url'), '/') . '/storage/' . $rawAvatar;
+                }
+
+                return [
+                    'id' => (string) $row->id,
+                    'fullName' => (string) $row->full_name,
+                    'avatarUrl' => $avatarUrl,
+                ];
+            })->all(),
+        ];
+    }
+
+    /**
      * Generate a comprehensive team dashboard including member stats, performance, and unit-scoped data.
      * Calculates performance based on task counts and overdue status.
      *
@@ -54,6 +119,7 @@ final class TeamRepository implements TeamRepositoryInterface
         $search = $request->input('search');
 
         // Force unit filtering for Manager/Staff roles if unitId is not provided
+        /** @var AdminUser|null $currentUser */
         $currentUser = auth()->user();
         if ($unitId === null && $currentUser && !$currentUser->hasRole(['ADMIN', 'DIRECTOR'])) {
             $unitId = $currentUser->primary_unit_id;

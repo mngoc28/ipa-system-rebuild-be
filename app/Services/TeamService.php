@@ -72,6 +72,27 @@ final class TeamService
     }
 
     /**
+     * Retrieve a lightweight list of members for mention autocomplete.
+     *
+     * @param Request $request
+     * @return array
+     */
+    public function getMentionMembers(Request $request): array
+    {
+        try {
+            return [
+                'success' => true,
+                'data' => $this->teamRepository->getMentionMembers($request),
+                'message' => __('teams.messages.fetch_success'),
+            ];
+        } catch (Throwable $throwable) {
+            Log::error('TeamService::getMentionMembers', ['error' => $throwable->getMessage()]);
+
+            return ['success' => false, 'data' => null, 'message' => __('teams.messages.fetch_error')];
+        }
+    }
+
+    /**
      * Add a new member to a team or organizational unit.
      *
      * @param array $attributes Member details (user_id, team_id, role, etc.).

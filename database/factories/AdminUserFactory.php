@@ -14,18 +14,13 @@ final class AdminUserFactory extends Factory
 
     public function definition(): array
     {
-        $fullName = $this->faker->randomElement([
-            'Nguyễn Văn An',
-            'Trần Thị Bích',
-            'Lê Minh Tuấn',
-            'Phạm Quốc Khánh',
-            'Võ Thị Hồng',
-            'Đặng Anh Khoa',
-            'Hoàng Thu Hà',
-            'Bùi Thanh Sơn',
-            'Nguyễn Thảo Vy',
-            'Trịnh Gia Huy',
-        ]);
+        $lastNames = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Phan', 'Vũ', 'Đặng', 'Bùi', 'Đỗ', 'Hồ', 'Ngô', 'Dương', 'Lý'];
+        $middleNames = ['Văn', 'Thị', 'Đình', 'Ngọc', 'Hữu', 'Minh', 'Kim', 'Thành', 'Xuân', 'Hồng', 'Thanh', 'Đức', 'Quang', 'Anh'];
+        $firstNames = ['An', 'Bình', 'Cường', 'Dũng', 'Giang', 'Hà', 'Hùng', 'Linh', 'Nam', 'Phượng', 'Quân', 'Sơn', 'Tuấn', 'Việt', 'Xuân', 'Yến', 'Anh', 'Khoa', 'Thịnh', 'Đạt', 'Huy', 'Hoàng', 'Bảo'];
+
+        $fullName = $this->faker->randomElement($lastNames) . ' ' . 
+                    $this->faker->randomElement($middleNames) . ' ' . 
+                    $this->faker->randomElement($firstNames);
 
         $username = Str::slug($fullName) . '-' . $this->faker->unique()->numberBetween(100, 9999);
 

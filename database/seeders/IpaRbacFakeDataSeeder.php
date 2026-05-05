@@ -9,11 +9,15 @@ use App\Models\OrgUnit;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Faker\Factory as Faker;
 
 final class IpaRbacFakeDataSeeder extends Seeder
 {
     public function run(): void
     {
+        $faker = Faker::create('vi_VN');
+        $faker->seed(1234);
+
         $roleCodes = [
             'ADMIN' => 'ADMIN',
             'DIRECTOR' => 'DIRECTOR',
@@ -39,7 +43,7 @@ final class IpaRbacFakeDataSeeder extends Seeder
             ['type' => 'STAFF', 'prefix' => 'staff', 'count' => 50, 'full_name_prefix' => 'Staff'],
         ];
 
-        DB::transaction(function () use ($usersToCreate, $roles, $unitIds, $roleCodes) {
+        DB::transaction(function () use ($usersToCreate, $roles, $unitIds, $roleCodes, $faker) {
             $managerUnits = [];
 
             foreach ($usersToCreate as $config) {
@@ -76,7 +80,7 @@ final class IpaRbacFakeDataSeeder extends Seeder
                         ['email' => $email],
                         [
                             'username' => $username,
-                            'full_name' => "{$config['full_name_prefix']} {$i}",
+                            'full_name' => $this->generateCleanVietnameseName($faker),
                             'phone' => '09' . str_pad((string)rand(0, 99999999), 8, '0', STR_PAD_LEFT),
                             'status' => 1,
                             'password' => Hash::make('111111'),
@@ -105,5 +109,21 @@ final class IpaRbacFakeDataSeeder extends Seeder
         });
 
         $this->command->info('Fake RBAC data seeded successfully.');
+    }
+
+    /**
+     * Generate a clean Vietnamese name without titles like "Bà", "Cụ", etc.
+     */
+    private function generateCleanVietnameseName($faker): string
+    {
+        $lastNames = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Phan', 'Vũ', 'Đặng', 'Bùi', 'Đỗ', 'Hồ', 'Ngô', 'Dương', 'Lý'];
+        $middleNames = ['Văn', 'Thị', 'Đình', 'Ngọc', 'Hữu', 'Minh', 'Kim', 'Thành', 'Xuân', 'Hồng', 'Thanh', 'Đức', 'Quang', 'Anh'];
+        $firstNames = ['An', 'Bình', 'Cường', 'Dũng', 'Giang', 'Hà', 'Hùng', 'Linh', 'Nam', 'Phượng', 'Quân', 'Sơn', 'Tuấn', 'Việt', 'Xuân', 'Yến', 'Anh', 'Khoa', 'Thịnh', 'Đạt', 'Huy', 'Hoàng', 'Bảo'];
+
+        $lastName = $faker->randomElement($lastNames);
+        $middleName = $faker->randomElement($middleNames);
+        $firstName = $faker->randomElement($firstNames);
+
+        return "{$lastName} {$middleName} {$firstName}";
     }
 }

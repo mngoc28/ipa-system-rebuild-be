@@ -7,6 +7,7 @@ namespace App\Repositories\ApprovalRepository;
 use App\Models\ApprovalHistory;
 use App\Models\ApprovalRequest;
 use App\Models\ApprovalStep;
+use App\Models\AdminUser;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -32,6 +33,7 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
     public function getPaginated(Request $request): LengthAwarePaginator
     {
         $query = $this->model->newQuery()->with([
+            'requester:id,full_name,username',
             'steps' => static fn ($builder) => $builder->orderBy('step_order'),
             'history' => static fn ($builder) => $builder->orderByDesc('changed_at'),
         ]);
@@ -65,10 +67,17 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
         }
 
         // --- Role-based Scoping ---
+        /** @var AdminUser|null $user */
         $user = auth()->user();
         if ($user) {
             $isStaff   = $user->hasRole('STAFF') && !$user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']);
             $isManager = $user->hasRole('MANAGER') && !$user->hasRole(['ADMIN', 'DIRECTOR']);
+            if ($isManager && $request->filled('status')) {
+                $status = strtoupper(trim($request->string('status')->toString()));
+                if ($status === 'PENDING' || $status === '0') {
+                    $this->syncPendingDelegationApprovalsForManager((int) $user->primary_unit_id);
+                }
+            }
 
             if ($isStaff) {
                 $query->where('requester_user_id', $user->id);
@@ -110,6 +119,7 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
     {
         $approvalRequest = $this->model->newQuery()
             ->with([
+                'requester:id,full_name,username',
                 'steps' => static fn ($builder) => $builder->orderBy('step_order'),
                 'history' => static fn ($builder) => $builder->orderByDesc('changed_at'),
             ])
@@ -124,6 +134,91 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
             'steps' => $this->transformSteps($approvalRequest->steps),
             'history' => $this->transformHistory($approvalRequest->history),
         ];
+    }
+    /**
+     * Backfill pending delegation approvals for a manager's unit.
+     *
+     * This keeps existing delegation submissions visible in the shared approval queue
+     * even if they were created before the workflow record existed.
+     *
+     * @param int $unitId
+     * @return void
+     */
+    private function syncPendingDelegationApprovalsForManager(int $unitId): void
+    {
+        if ($unitId <= 0) {
+            return;
+        }
+
+        DB::transaction(function () use ($unitId): void {
+            $pendingDelegations = DB::table('ipa_delegation as delegation')
+                ->join('ipa_user as owner', 'owner.id', '=', 'delegation.owner_user_id')
+                ->leftJoin('ipa_approval_request as request', function ($join): void {
+                    $join->on('request.ref_id', '=', 'delegation.id')
+                        ->where('request.ref_table', '=', 'ipa_delegation')
+                        ->where('request.status', '=', 0);
+                })
+                ->whereNull('delegation.deleted_at')
+                ->where('delegation.status', 1)
+                ->where('owner.primary_unit_id', $unitId)
+                ->whereNull('request.id')
+                ->select([
+                    'delegation.id',
+                    'delegation.priority',
+                    'delegation.owner_user_id',
+                ])
+                ->get();
+
+            if ($pendingDelegations->isEmpty()) {
+                return;
+            }
+
+            $managerIds = DB::table('ipa_user as user')
+                ->join('ipa_user_role as user_role', 'user_role.user_id', '=', 'user.id')
+                ->join('ipa_role as role', 'role.id', '=', 'user_role.role_id')
+                ->where('user.primary_unit_id', $unitId)
+                ->where('role.code', 'MANAGER')
+                ->where('user.status', 1)
+                ->pluck('user.id')
+                ->map(static fn ($id): int => (int) $id)
+                ->all();
+
+            if ($managerIds === []) {
+                return;
+            }
+
+            $now = now();
+
+            foreach ($pendingDelegations as $delegation) {
+                $requestId = (int) DB::table('ipa_approval_request')->insertGetId([
+                    'request_type' => 'DELEGATION_APPROVAL',
+                    'ref_table' => 'ipa_delegation',
+                    'ref_id' => (int) $delegation->id,
+                    'requester_user_id' => (int) $delegation->owner_user_id,
+                    'current_step' => 1,
+                    'priority' => (int) $delegation->priority,
+                    'due_at' => $now->copy()->addDays(3),
+                    'status' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+                $stepRows = array_map(static function (int $managerId) use ($requestId, $now): array {
+                    return [
+                        'approval_request_id' => $requestId,
+                        'approver_user_id' => $managerId,
+                        'step_order' => 1,
+                        'decision' => 0,
+                        'decision_note' => null,
+                        'decided_at' => null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }, $managerIds);
+
+                DB::table('ipa_approval_step')->insert($stepRows);
+            }
+        });
     }
 
     /**
@@ -201,6 +296,21 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
                 'changed_at' => now(),
             ]);
 
+            if ($approvalRequest->ref_table === 'ipa_delegation') {
+                $delegationUpdate = [
+                    'status' => $newStatus === 1 ? 3 : 6,
+                    'updated_at' => now(),
+                ];
+
+                if ($newStatus === 2) {
+                    $delegationUpdate['approval_remark'] = $decisionNote;
+                }
+
+                DB::table('ipa_delegation')
+                    ->where('id', $approvalRequest->ref_id)
+                    ->update($delegationUpdate);
+            }
+
             // Trigger notification to requester
             try {
                 $statusText = $newStatus === 1 ? 'được phê duyệt' : 'bị từ chối';
@@ -234,8 +344,12 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
         return [
             'id' => (string) $approvalRequest->id,
             'type' => (string) $approvalRequest->request_type,
+            'typeLabel' => $this->resolveTypeLabel($approvalRequest),
             'title' => $this->resolveTitle($approvalRequest),
             'requesterId' => (string) $approvalRequest->requester_user_id,
+            'requesterName' => $approvalRequest->requester?->full_name
+                ?: $approvalRequest->requester?->username
+                ?: (string) $approvalRequest->requester_user_id,
             'approverId' => $currentStep?->approver_user_id !== null ? (string) $currentStep->approver_user_id : null,
             'status' => $this->statusToText((int) $approvalRequest->status),
             'createdAt' => optional($approvalRequest->created_at)?->toIso8601String(),
@@ -315,13 +429,37 @@ final class ApprovalRepository implements ApprovalRepositoryInterface
      */
     private function resolveTitle(ApprovalRequest $approvalRequest): string
     {
-        $label = trim($approvalRequest->request_type . ' ' . $approvalRequest->ref_table);
+        $label = $this->resolveTypeLabel($approvalRequest);
 
-        if ($label === '') {
-            return 'Approval #' . $approvalRequest->id;
+        if ($approvalRequest->ref_table === 'ipa_delegation') {
+            return $label . ' #' . $approvalRequest->ref_id;
         }
 
-        return $label . ' #' . $approvalRequest->ref_id;
+        if ($approvalRequest->ref_table === 'ipa_minutes') {
+            return $label . ' #' . $approvalRequest->ref_id;
+        }
+
+        if ($approvalRequest->ref_table === 'ipa_event') {
+            return $label . ' #' . $approvalRequest->ref_id;
+        }
+
+        return $label !== '' ? $label . ' #' . $approvalRequest->ref_id : 'Approval #' . $approvalRequest->id;
+    }
+
+    /**
+     * Resolve a human-readable approval type label.
+     *
+     * @param ApprovalRequest $approvalRequest
+     * @return string
+     */
+    private function resolveTypeLabel(ApprovalRequest $approvalRequest): string
+    {
+        return match (strtoupper(trim((string) $approvalRequest->request_type))) {
+            'DELEGATION_APPROVAL' => 'Đoàn công tác',
+            'MINUTES_APPROVAL' => 'Biên bản',
+            'EVENT_APPROVAL' => 'Lịch làm việc',
+            default => 'Phê duyệt',
+        };
     }
 
     /**

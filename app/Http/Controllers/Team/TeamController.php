@@ -74,6 +74,23 @@ final class TeamController extends Controller
     }
 
     /**
+     * Retrieve lightweight member data for mention autocomplete.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function mentions(Request $request): JsonResponse
+    {
+        $result = $this->teamService->getMentionMembers($request);
+
+        if (! $result['success']) {
+            return $this->errorResponse($result['message'], 'FETCH_FAILED', HttpStatus::BAD_REQUEST);
+        }
+
+        return $this->successResponse($result['data'], $result['message']);
+    }
+
+    /**
      * Assign a new member to a team or update their assignment.
      *
      * @param Request $request

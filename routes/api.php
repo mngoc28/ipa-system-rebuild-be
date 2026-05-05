@@ -22,7 +22,9 @@ use App\Http\Controllers\Approval\ApprovalController;
 use App\Http\Controllers\Document\DocumentController;
 use App\Http\Controllers\Team\TeamController;
 use App\Http\Controllers\Profile\ProfileController;
+use App\Http\Controllers\Search\GlobalSearchController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 
 Route::prefix('v1')->group(function (): void {
     // --- Public & Health Check Endpoints ---
@@ -43,11 +45,11 @@ Route::prefix('v1')->group(function (): void {
 
     Route::get('/test-db', function () {
         try {
-            \DB::connection()->getPdo();
-            $tables = \DB::select('SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = \'public\'');
+            DB::connection()->getPdo();
+            $tables = DB::select('SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = \'public\'');
             return response()->json([
                 'status' => 'success',
-                'database' => \DB::connection()->getDatabaseName(),
+                'database' => DB::connection()->getDatabaseName(),
                 'tables' => array_column($tables, 'tablename')
             ]);
         } catch (\Exception $e) {
@@ -75,6 +77,8 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('', [ProfileController::class, 'update']);
         Route::post('avatar', [ProfileController::class, 'updateAvatar']);
     });
+
+    Route::get('/search', [GlobalSearchController::class, 'search'])->middleware('jwt.auth');
 
     /**
      * Shared Module Routes
@@ -212,6 +216,7 @@ Route::prefix('v1')->group(function (): void {
         Route::prefix('teams')->group(function (): void {
             Route::get('', [TeamController::class, 'index']);
             Route::get('units', [TeamController::class, 'units']);
+            Route::get('mentions', [TeamController::class, 'mentions']);
         });
     };
 

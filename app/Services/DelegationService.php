@@ -7,6 +7,7 @@ use App\Repositories\AdminUserRepository\AdminUserRepositoryInterface;
 use App\Services\NotificationService;
 use App\Jobs\NotifyManagersOfSubmission;
 use App\Models\Delegation;
+use App\Models\DelegationComment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -89,6 +90,7 @@ class DelegationService
                 /** @var Delegation|null $delegation */
                 $delegation = $this->repository->create($data);
                 if ($delegation && (int)$delegation->status === 1) {
+                    $this->syncApprovalWorkflowForDelegation($delegation);
                     NotifyManagersOfSubmission::dispatch($delegation->id);
                 }
                 return $delegation;
@@ -121,6 +123,7 @@ class DelegationService
                 if ($delegation) {
                     $newStatus = (int)$delegation->status;
                     if ($newStatus === 1 && $oldStatus !== 1) {
+                        $this->syncApprovalWorkflowForDelegation($delegation);
                         NotifyManagersOfSubmission::dispatch($delegation->id);
                     } elseif ($oldStatus === 1 && in_array($newStatus, [3, 6, 2])) {
                         $this->notifyStaffOfDecision($delegation, $newStatus);
@@ -172,6 +175,71 @@ class DelegationService
     }
 
     /**
+     * Ensure a delegation submission exists in the approval workflow queue.
+     *
+     * @param Delegation $delegation
+     * @return void
+     */
+    protected function syncApprovalWorkflowForDelegation(Delegation $delegation): void
+    {
+        $existingRequest = DB::table('ipa_approval_request')
+            ->where('ref_table', 'ipa_delegation')
+            ->where('ref_id', $delegation->id)
+            ->where('status', 0)
+            ->first();
+
+        if ($existingRequest !== null) {
+            return;
+        }
+
+        $unitId = $delegation->owner->primary_unit_id ?? null;
+        if ($unitId === null) {
+            Log::warning('Skipping delegation approval workflow creation because the owner has no primary unit.', [
+                'delegation_id' => $delegation->id,
+            ]);
+            return;
+        }
+
+        $managerIds = $this->userRepository->getIdsByRoleAndUnit('MANAGER', (int) $unitId);
+        if ($managerIds === []) {
+            Log::warning('Skipping delegation approval workflow creation because no managers were found for the owner unit.', [
+                'delegation_id' => $delegation->id,
+                'unit_id' => $unitId,
+            ]);
+            return;
+        }
+
+        $requestId = (int) DB::table('ipa_approval_request')->insertGetId([
+            'request_type' => 'DELEGATION_APPROVAL',
+            'ref_table' => 'ipa_delegation',
+            'ref_id' => $delegation->id,
+            'requester_user_id' => $delegation->owner_user_id,
+            'current_step' => 1,
+            'priority' => (int) $delegation->priority,
+            'due_at' => now()->addDays(3),
+            'status' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $now = now();
+        $stepRows = array_map(static function (int $managerId) use ($requestId, $now): array {
+            return [
+                'approval_request_id' => $requestId,
+                'approver_user_id' => $managerId,
+                'step_order' => 1,
+                'decision' => 0,
+                'decision_note' => null,
+                'decided_at' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }, $managerIds);
+
+        DB::table('ipa_approval_step')->insert($stepRows);
+    }
+
+    /**
      * Remove a delegation record.
      *
      * @param int $id
@@ -199,13 +267,20 @@ class DelegationService
     public function listComments(int $delegationId)
     {
         try {
-            /** @var Delegation|null $delegation */
-            $delegation = $this->repository->getById($delegationId);
-            if (!$delegation) {
+            $delegationExists = DB::table('ipa_delegation')
+                ->where('id', $delegationId)
+                ->exists();
+
+            if (!$delegationExists) {
                 return ['success' => false, 'message' => 'Không tìm thấy đoàn công tác.'];
             }
 
-            $comments = $delegation->comments()->with('commenter:id,full_name,avatar_url')->orderBy('created_at', 'asc')->get();
+            $comments = DelegationComment::query()
+                ->select(['id', 'delegation_id', 'commenter_user_id', 'comment_text', 'created_at'])
+                ->with(['commenter:id,full_name,avatar_url'])
+                ->where('delegation_id', $delegationId)
+                ->orderBy('created_at', 'asc')
+                ->get();
 
             return ['success' => true, 'data' => ['items' => $comments]];
         } catch (\Exception $e) {
@@ -225,18 +300,22 @@ class DelegationService
     public function addComment(int $delegationId, string $content, int $commenterId)
     {
         try {
-            /** @var Delegation|null $delegation */
-            $delegation = $this->repository->getById($delegationId);
-            if (!$delegation) {
+            $delegationInfo = DB::table('ipa_delegation')
+                ->select(['id', 'owner_user_id'])
+                ->where('id', $delegationId)
+                ->first();
+
+            if (!$delegationInfo) {
                 return ['success' => false, 'message' => 'Không tìm thấy đoàn công tác.'];
             }
 
-            $comment = $delegation->comments()->create([
+            $comment = DelegationComment::create([
+                'delegation_id' => $delegationId,
                 'commenter_user_id' => $commenterId,
                 'comment_text' => $content,
             ]);
 
-            $this->sendCommentNotifications($delegation, $comment, $commenterId);
+            $this->sendCommentNotifications($delegationId, (int) ($delegationInfo->owner_user_id ?? 0), $comment, $commenterId);
 
             return [
                 'success' => true,
@@ -260,7 +339,7 @@ class DelegationService
     public function updateComment(int $commentId, string $content, int $userId)
     {
         try {
-            $comment = \DB::table('ipa_delegation_comment')->where('id', $commentId)->first();
+            $comment = DB::table('ipa_delegation_comment')->where('id', $commentId)->first();
             if (!$comment) {
                 return ['success' => false, 'message' => 'Không tìm thấy bình luận.'];
             }
@@ -291,7 +370,7 @@ class DelegationService
     public function deleteComment(int $commentId, int $userId)
     {
         try {
-            $comment = \DB::table('ipa_delegation_comment')->where('id', $commentId)->first();
+            $comment = DB::table('ipa_delegation_comment')->where('id', $commentId)->first();
             if (!$comment) {
                 return ['success' => false, 'message' => 'Không tìm thấy bình luận.'];
             }
@@ -312,18 +391,19 @@ class DelegationService
     /**
      * Coordinate notifications for new comments, targeting the owner and @mentioned users.
      *
-     * @param Delegation $delegation
-     * @param \App\Models\DelegationComment $comment
+     * @param int $delegationId
+     * @param int $ownerUserId
+     * @param DelegationComment $comment
      * @param int $commenterId
      * @return void
      */
-    protected function sendCommentNotifications(Delegation $delegation, \App\Models\DelegationComment $comment, int $commenterId): void
+    protected function sendCommentNotifications(int $delegationId, int $ownerUserId, DelegationComment $comment, int $commenterId): void
     {
         $recipients = collect();
 
         // 1. Notify Owner (if not commenter)
-        if ($delegation->owner_user_id && $delegation->owner_user_id !== $commenterId) {
-            $recipients->push($delegation->owner_user_id);
+        if ($ownerUserId && $ownerUserId !== $commenterId) {
+            $recipients->push($ownerUserId);
         }
 
         // 2. Notify @mentioned users
@@ -342,7 +422,7 @@ class DelegationService
                 'title' => "[Đoàn công tác] Bình luận mới từ " . auth()->user()->full_name,
                 'body' => $comment->comment_text,
                 'ref_table' => 'ipa_delegation',
-                'ref_id' => $delegation->id,
+                'ref_id' => $delegationId,
                 'severity' => 0,
             ], $recipientIds);
         }

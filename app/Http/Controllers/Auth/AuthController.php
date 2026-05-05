@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -55,7 +56,7 @@ final class AuthController extends Controller
         $usernameOrEmail = $request->input('usernameOrEmail');
         $password = $request->input('password');
 
-        \Log::info('Login attempt', ['identifier' => $usernameOrEmail]);
+        Log::info('Login attempt', ['identifier' => $usernameOrEmail]);
 
         $user = AdminUser::query()
             ->with(['roles', 'roles.permissions', 'unit'])
@@ -114,8 +115,8 @@ final class AuthController extends Controller
     }
 
     /**
-     * Initialize application state with user profile and common counts.
-     * Consolidates multiple layout-level requests into one.
+     * Initialize application state with user profile, common counts, and master data.
+     * Consolidates multiple layout-level requests into one to minimize network latency.
      *
      * @param Request $request
      * @return JsonResponse
@@ -139,10 +140,27 @@ final class AuthController extends Controller
             $pendingApprovalsCount = \App\Models\ApprovalRequest::query()->whereIn('status', [0])->count();
         }
 
+        // Consolidated Master Data (Cached for 1 hour to maximize speed)
+        $masterData = \Illuminate\Support\Facades\Cache::remember('app_init_master_data', 3600, function () {
+            return [
+                'countries' => DB::table('ipa_country')->select(['id', 'name_vi', 'name_en', 'code'])->get(),
+                'sectors' => DB::table('ipa_md_sector')->select(['id', 'name_vi', 'code'])->get(),
+                'locations' => DB::table('ipa_location')->select(['id', 'name as name_vi', 'address_line as address'])->get(),
+                'units' => DB::table('ipa_org_unit')->select(['id', 'unit_name as unitName', 'unit_code as unitCode'])->get(),
+                'users' => DB::table('ipa_user')
+                    ->where('status', 1)
+                    ->select(['id', 'full_name as fullName', 'username'])
+                    ->orderBy('fullName', 'asc')
+                    ->get(),
+                'roles' => DB::table('ipa_role')->select(['id', 'code', 'name'])->get(),
+            ];
+        });
+
         return $this->successResponse([
             'user' => $userData,
             'unreadCount' => $unreadCount,
             'pendingApprovalsCount' => $pendingApprovalsCount,
+            'masterData' => $masterData,
         ], 'Application state initialized successfully');
     }
 

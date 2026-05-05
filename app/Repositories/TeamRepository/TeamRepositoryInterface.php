@@ -32,6 +32,14 @@ interface TeamRepositoryInterface
     public function getUnits(Request $request): array;
 
     /**
+     * Get lightweight member data for mention/autocomplete use.
+     *
+     * @param Request $request
+     * @return array
+     */
+    public function getMentionMembers(Request $request): array;
+
+    /**
      * Create a new team member record and return the normalized result.
      *
      * @param array $attributes
