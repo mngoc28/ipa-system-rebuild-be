@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -56,5 +57,10 @@ final class ApprovalRequest extends Model
     public function history(): HasMany
     {
         return $this->hasMany(ApprovalHistory::class, 'approval_request_id');
+    }
+
+    public function requester(): BelongsTo
+    {
+        return $this->belongsTo(AdminUser::class, 'requester_user_id');
     }
 }

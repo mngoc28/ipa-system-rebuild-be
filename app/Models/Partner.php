@@ -17,8 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @package App\Models
  *
  * @property int $id
- * @property string $name
- * @property string|null $code
+ * @property string $partner_name
+ * @property string|null $partner_code
  * @property string|null $description
  * @property string|null $address
  * @property string|null $website

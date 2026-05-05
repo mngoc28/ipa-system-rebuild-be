@@ -2,6 +2,7 @@
 
 namespace App\Repositories\DelegationRepository;
 
+use App\Models\AdminUser;
 use App\Models\Event;
 use App\Models\Delegation;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class DelegationRepository implements DelegationRepositoryInterface
      */
     public function getPaginated(Request $request): array
     {
+        /** @var AdminUser|null $user */
         $user = auth()->user();
         $perPage = max(1, min(100, (int) $request->get('per_page', 10)));
         $page    = max(1, (int) $request->get('page', 1));
@@ -254,6 +256,7 @@ class DelegationRepository implements DelegationRepositoryInterface
     {
         $query = $this->model->newQuery();
 
+        /** @var AdminUser|null $user */
         $user = auth()->user();
         if ($user) {
             $isStaff = $user->hasRole('STAFF') && !$user->hasRole(['ADMIN', 'DIRECTOR', 'MANAGER']);
@@ -271,16 +274,27 @@ class DelegationRepository implements DelegationRepositoryInterface
             }
         }
 
-        return $query->with([
+        return $query->select([
+            'id', 'code', 'name', 'direction', 'status', 'priority',
+            'country_id', 'host_unit_id', 'owner_user_id',
+            'start_date', 'end_date', 'participant_count',
+            'objective', 'description', 'investment_potential', 'approval_remark',
+            'created_at', 'updated_at'
+        ])->with([
             'members',
-            'events',
+            'events' => function ($q) {
+                $q->with(['location:id,name', 'staff:id,name']);
+            },
             'outcomes',
-            'country',
-            'partners',
-            'hostUnit',
-            'sectors',
-            'checklist',
-            'contacts'
+            'country:id,name_vi,name_en,code',
+            'partners:id,partner_name',
+            'hostUnit:id,unit_name,unit_code',
+            'sectors:id,name_vi,code',
+            'checklist' => function ($q) {
+                $q->with('assignee:id,full_name');
+            },
+            'contacts',
+            'owner:id,full_name,avatar_url'
         ])->find($id);
     }
 
@@ -538,7 +552,7 @@ class DelegationRepository implements DelegationRepositoryInterface
      */
     public function updateComment(int $commentId, array $data)
     {
-        return \DB::table('ipa_delegation_comment')
+        return DB::table('ipa_delegation_comment')
             ->where('id', $commentId)
             ->update($data);
     }
@@ -551,7 +565,7 @@ class DelegationRepository implements DelegationRepositoryInterface
      */
     public function deleteComment(int $commentId)
     {
-        return \DB::table('ipa_delegation_comment')
+        return DB::table('ipa_delegation_comment')
             ->where('id', $commentId)
             ->delete();
     }

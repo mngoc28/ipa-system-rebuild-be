@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property int $id
  * @property int|null $folder_id Parent folder ID.
- * @property string $name Original filename.
+ * @property string $file_name Original filename.
  * @property string $path Internal storage path.
  * @property string|null $mime_type
  * @property int $size_bytes
